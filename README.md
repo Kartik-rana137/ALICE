@@ -33,6 +33,8 @@ search at 100k chunks (~1,000 papers) and ~185 ms at 1M chunks (~10,000 papers).
 
 ## Use
 
+![ALICE terminal chat interface](docs/assets/alice-cli.svg)
+
 ```
 .venv\Scripts\alice tui                   # chat box (full-screen terminal UI); starts the model automatically
 .venv\Scripts\alice                       # line-based chat (same options)

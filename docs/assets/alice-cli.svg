@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <linearGradient id="title" x1="0" x2="1">
+      <stop offset="0" stop-color="#7c6cff"/>
+      <stop offset="1" stop-color="#48d7c4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000" flood-opacity=".38"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="720" rx="24" fill="#11151c"/>
+  <g filter="url(#shadow)">
+    <rect x="24" y="24" width="1152" height="672" rx="14" fill="#171b24" stroke="#303747"/>
+  </g>
+
+  <rect x="24" y="24" width="1152" height="48" rx="14" fill="#202634"/>
+  <rect x="24" y="58" width="1152" height="14" fill="#202634"/>
+  <circle cx="49" cy="48" r="7" fill="#ff6978"/>
+  <circle cx="72" cy="48" r="7" fill="#ffc861"/>
+  <circle cx="95" cy="48" r="7" fill="#58d68d"/>
+  <text x="600" y="54" fill="#eef2ff" font-family="Segoe UI, sans-serif" font-size="19" font-weight="700" text-anchor="middle">ALICE</text>
+  <text x="1155" y="54" fill="#9ca8bb" font-family="Consolas, monospace" font-size="14" text-anchor="end">Qwen3.5-9B</text>
+
+  <g font-family="Segoe UI, sans-serif">
+    <rect x="80" y="104" width="1040" height="88" rx="12" fill="#20242f" stroke="#7774dc" stroke-width="2"/>
+    <text x="104" y="132" fill="#aaaef5" font-size="13" font-weight="700">you</text>
+    <text x="104" y="161" fill="#f1f4fb" font-size="20">Explain binary search and show me a Python implementation.</text>
+
+    <rect x="80" y="210" width="1040" height="360" rx="12" fill="#1b2129" stroke="#45caa9" stroke-width="2"/>
+    <text x="104" y="238" fill="#68dec2" font-size="13" font-weight="700">ALICE</text>
+    <text x="104" y="270" fill="#eef2f7" font-size="18">Binary search finds a target in sorted data by repeatedly halving the search space.</text>
+    <text x="104" y="298" fill="#eef2f7" font-size="18">Its time complexity is <tspan fill="#d6d9ff" font-weight="700">O(log n)</tspan>; the array must be sorted.</text>
+
+    <rect x="104" y="322" width="992" height="222" rx="8" fill="#11161d" stroke="#303744"/>
+    <g font-family="Consolas, monospace" font-size="16">
+      <text x="126" y="350" fill="#7f8b9e"> 1</text>
+      <text x="170" y="350" fill="#c792ea">def</text>
+      <text x="204" y="350" fill="#82aaff"> binary_search</text>
+      <text x="324" y="350" fill="#d6deeb">(values, target):</text>
+      <text x="126" y="380" fill="#7f8b9e"> 2</text>
+      <text x="170" y="380" fill="#d6deeb">    left, right = 0, len(values) - 1</text>
+      <text x="126" y="410" fill="#7f8b9e"> 3</text>
+      <text x="170" y="410" fill="#d6deeb">    </text>
+      <text x="170" y="410" fill="#c792ea">while</text>
+      <text x="222" y="410" fill="#d6deeb"> left &lt;= right:</text>
+      <text x="126" y="440" fill="#7f8b9e"> 4</text>
+      <text x="170" y="440" fill="#d6deeb">        mid = (left + right) // 2</text>
+      <text x="126" y="470" fill="#7f8b9e"> 5</text>
+      <text x="170" y="470" fill="#c792ea">        if</text>
+      <text x="218" y="470" fill="#d6deeb"> values[mid] == target:</text>
+      <text x="126" y="500" fill="#7f8b9e"> 6</text>
+      <text x="170" y="500" fill="#d6deeb">            </text>
+      <text x="170" y="500" fill="#c792ea">return</text>
+      <text x="224" y="500" fill="#d6deeb"> mid</text>
+      <text x="126" y="530" fill="#7f8b9e"> 7</text>
+      <text x="170" y="530" fill="#d6deeb">        </text>
+    </g>
+  </g>
+
+  <rect x="24" y="640" width="1152" height="34" fill="#202634"/>
+  <text x="42" y="662" fill="#9ca8bb" font-family="Consolas, monospace" font-size="14">Qwen3.5-9B  ·  thinking off  ·  tools on  ·  library 5 docs</text>
+
+  <rect x="24" y="674" width="1152" height="22" fill="#171b24"/>
+  <text x="42" y="689" fill="#d2dae8" font-family="Consolas, monospace" font-size="13">Ask ALICE anything...  (/help for commands)</text>
+
+  <rect x="24" y="696" width="1152" height="0"/>
+  <rect x="1138" y="680" width="8" height="8" rx="4" fill="#48d7c4"/>
+</svg>

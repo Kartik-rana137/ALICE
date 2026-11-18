@@ -8,11 +8,28 @@ Status: Phases 0-3 (benchmarks, chat CLI, tools, paper library). See [docs/DEVLO
 
 1. llama.cpp CUDA build in `tools/llama.cpp/` (see DEVLOG, Phase 0) and the models:
    `bash scripts/download_models.sh` (Qwen3.5-9B Q4_K_M 5.7 GB + Qwen3-Embedding-0.6B 0.6 GB)
-2. Python 3.10+:
+2. Python 3.11+:
    ```
    python -m venv .venv
    .venv\Scripts\python -m pip install -e ".[dev]"
    ```
+
+## Configuration and hardware upgrades
+
+All hardware-specific settings live in `alice.toml` (not committed). Start from the example:
+`copy alice.example.toml alice.toml`. Without it, the defaults target a small GPU
+(Qwen3.5-9B at 16k context, ~5.6 GB VRAM; embedder on the CPU). To upgrade:
+
+1. Download the bigger model into `models/` and add a profile, e.g. `[models.big]` with `gguf`, `ctx`,
+   `ngl`, `extra_args`; set `[chat] profile = "big"` (or run `alice --model big`).
+2. With spare VRAM / unified memory, set `[embedding] device = "gpu"`.
+3. If you change the embedding model: `alice library --rebuild`, then
+   `python scripts/calibrate_retrieval.py` and copy the suggested thresholds into `[embedding]`.
+   ALICE refuses to mix embedding models in one library and tells you when a rebuild is needed.
+
+Works on Windows, macOS and Linux (llama.cpp's `llama-server`; `.exe` is added automatically on Windows).
+The paper library is exact vector search + SQLite FTS5; `scripts/scale_bench.py` measured ~19 ms per
+search at 100k chunks (~1,000 papers) and ~185 ms at 1M chunks (~10,000 papers).
 
 ## Use
 
@@ -41,4 +58,6 @@ python scripts\run_prompts.py Qwen3.5-9B-Q4_K_M                   # Phase 0 prom
 set ALICE_LIBRARY=data\eval_library
 .venv\Scripts\alice ingest data\eval_papers                       # 5 arXiv papers (download: see DEVLOG)
 .venv\Scripts\python scripts\rag_eval.py                         # retrieval + grounded-answer eval
+.venv\Scripts\python scripts\scale_bench.py                      # vector search at 10k-1M chunks
+.venv\Scripts\python scripts\calibrate_retrieval.py --set 2026   # thresholds for the embedding model
 ```

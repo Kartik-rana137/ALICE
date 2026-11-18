@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from . import config
-from .library import SUPPORTED, Library, LlamaEmbedder
+from .library import SUPPORTED, Library, LibraryError, LlamaEmbedder
 from .llm import LLMError, server_healthy
 
 
@@ -33,7 +33,8 @@ def ingest(args) -> int:
     if args.title and len(files) > 1:
         print("--title only works with a single file")
         return 1
-    gpu = not server_healthy()          # GPU is free unless the chat model is running
+    # GPU if configured, or if it is free (the chat model is not running)
+    gpu = config.EMBED_DEVICE == "gpu" or not server_healthy()
     lib = Library()
     emb = LlamaEmbedder(gpu=gpu)
     print(f"Embedding on {'GPU' if gpu else 'CPU (chat model is using the GPU)'} ...")
@@ -43,7 +44,7 @@ def ingest(args) -> int:
             t = time.time()
             try:
                 status, n, title = lib.add(f, emb, title=args.title, section_headers=not args.no_sections)
-            except LLMError as e:
+            except (LLMError, LibraryError) as e:
                 print(f"error: {e}")
                 return 1
             except Exception as e:                # unreadable/corrupt file: report and continue
@@ -62,7 +63,7 @@ def library(args) -> int:
         print("removed" if lib.remove(args.remove) else f"no document with id {args.remove}")
         return 0
     if args.rebuild:
-        gpu = not server_healthy()
+        gpu = config.EMBED_DEVICE == "gpu" or not server_healthy()
         emb = LlamaEmbedder(gpu=gpu)
         print(f"Rebuilding the index on {'GPU' if gpu else 'CPU'} ...")
         try:

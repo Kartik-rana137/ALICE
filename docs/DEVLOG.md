@@ -478,3 +478,48 @@ Library question -> searched, cited [L1] (Attention Is All You Need p. 7), corre
 - [ ] Detect fabricated tool use ("I searched..." with no tool call) the way citations and calculations are checked.
 - [ ] Repeat the honesty/tone evals with several seeds and a larger question set; hand-grade a sample, use regexes only for screening.
 - [ ] Hardware note: larger unified-memory and GPU configurations should allow larger default models and reduce small-model failures.
+
+---
+
+## 2026-11-18 — Scalability: ready for a hardware upgrade
+
+Goal: ALICE must keep working, and get better, when the hardware is upgraded.
+
+### What would have broken on an upgrade, and the fixes
+| Problem | Fix |
+|---|---|
+| Model file, context, GPU layers, ports, embedder device hard-coded in `config.py` | `alice.toml` (gitignored; `alice.example.toml` committed). Precedence: env vars > alice.toml > code defaults (= the original dev setup). New profiles via `[models.<name>]` incl. `extra_args` for server flags (e.g. flash attention); typos in keys are rejected with the list of valid keys. `[chat] profile` picks the default. |
+| Windows-only server path (`llama-server.exe`) | One config for every OS; `.exe` added on Windows only. |
+| Changing the embedding model would silently corrupt search (old and new vectors compared; crash if dimensions differ, plausible garbage if not) | The library records `embed_model` / `embed_dim` in a `meta` table. With a different configured model, search and ingest refuse with "run `alice library --rebuild`", and the chat disables the library with that message. Old libraries are adopted as built with Qwen3-Embedding-0.6B. A missing embedding model file is reported instead of silently skipping the library. |
+| Retrieval thresholds tuned to one embedder | Moved to `[embedding]`; `scripts/calibrate_retrieval.py` derives new values from related vs unrelated questions. Re-run for the current model: 0.65 (2026 set) / 0.62 (famous set) vs the configured 0.65, so the hand-calibrated value holds. The explicit-mention threshold it suggests (0.53-0.61) is higher than the 0.50 chosen from a real paraphrase (0.605); kept 0.50. |
+| Vectors decoded row by row into one in-memory matrix on every start | `alice/vectors.py`: memory-mapped float32 cache next to the database, built by streaming from SQLite into a preallocated file, searched exactly in 1 GB blocks. SQLite stays the source of truth; the vector store is behind a small interface so an approximate index can replace it later. |
+
+### Snag: Windows and memory-mapped files
+- The first cache version overwrote `vectors.npy` on rebuild. A test that kept a second handle open (= a chat session running while `alice ingest` adds papers in another terminal) failed with `OSError: [Errno 22]`: Windows cannot overwrite or delete a file that is memory-mapped.
+- Fix: versioned cache files (`vectors-<hash>.npy`), written to a temp name and moved into place atomically, never overwritten; old versions are deleted once nothing maps them. The library keeps a version counter in `meta`, bumped on every add/remove/rebuild, and each search compares it (O(1)), so a running chat picks up papers ingested by another process. Regression test simulates the two processes.
+
+### How far does exact vector search go? (`scripts/scale_bench.py`, 1024-dim, the dev machine's CPU)
+| Chunks (~papers) | Cache size | Search median | p95 |
+|---|---|---|---|
+| 10,000 (~100) | 0.04 GB | 1.7 ms | 1.9 ms |
+| 100,000 (~1,000) | 0.41 GB | 18.9 ms | 21.3 ms |
+| 300,000 (~3,000) | 1.23 GB | 56.9 ms | 64.6 ms |
+| 1,000,000 (~10,000) | 4.10 GB | 184.5 ms | 193.9 ms |
+
+- Cache build from SQLite: 6.6 s per 100k chunks (plus 7.3 s to insert them). Linear scaling throughout.
+- Conclusion: exact search is fine far beyond a student's library. **Known limit:** the cache is rebuilt in full after every change (~1 min per ingest at 10,000 papers). Past ~300k chunks, switch to an incremental/approximate index (sqlite-vec keeps the single-file design; FAISS/LanceDB after that) by implementing `search` / `invalidate` / `len`.
+- SQLite FTS5 (keyword half) handles millions of rows; an index on `chunks(doc_id)` was added for removals.
+- Regression: retrieval results identical before/after on both eval sets.
+
+### Snag found during the live check: citation laundering
+- Asked "Which optimizer settings did the Transformer paper use?", ALICE answered partly from memory with invented details ("learning rate 0.0001", "no weight decay", "batch size 64") and cited **real but irrelevant** passages ([L4] = the LoRA introduction). The citation check passed: it only verified that cited labels were retrieved.
+- Fix: a **support check**. For every sentence citing [Lk], each number in it (decimals, percentages, integers >= 10) must appear in one of the cited passages; otherwise the CLI warns "these numbers are not in the passages they cite ... may come from the model's memory". Unit test replays the failure.
+- Limit seen in two more live runs: invented numbers in *uncited* sentences are not checked, and a misread but present number ("0.1 instead of 0.3") passes. It narrows citation laundering; it doesn't eliminate it.
+
+### Snag: papers referred to by nickname
+- Root cause of the above: retrieval. "The Transformer paper" is "Attention Is All You Need" (no "Transformer" in the title) and "the ResNet paper" is "Deep Residual Learning..."; keyword search is pulled to the many LoRA/BERT passages that say "Transformer". New eval set `--set alias` (6 questions, evidence verified in the stored text): hybrid 4/6, MRR 0.58.
+- **Tried and reverted: document-level routing** (embed each paper's title + first passages, search within the best-matching papers as a third RRF signal). Result: alias set unchanged (4/6), famous set worse (10/10 -> 9/10, MRR 0.80 -> 0.76), 2026 set MRR 0.82 -> 0.77. Routing found the right paper, but within it the small embedder still didn't rank "5.3 Optimizer" for "optimizer settings ... Transformer paper"; stripping the nickname from the query loses the paper altogether (it then finds the Adam paper). Code removed (no benefit, extra cost), numbers back to baseline.
+- Next candidates: paper-scoped search (detect which paper a nickname means, then search only it with the rest of the question) or LLM query rewriting; both better judged after a model upgrade.
+
+### Tests
+90 passing (config portability and validation, profile overrides, model-mismatch refusal and rebuild, legacy adoption, vector index vs brute force across blocks, cache reuse/rebuild with a second mapped handle, citation support check).

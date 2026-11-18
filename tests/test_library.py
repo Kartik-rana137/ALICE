@@ -163,3 +163,18 @@ def test_reference_guard_triggers_on_named_work_not_on_everyday_questions():
     p = persona.system_prompt(tools=["arxiv_search"], guard=True)
     assert "do not actually know it" in p and "arxiv_search to look it up" in p
     assert "do not actually know it" not in persona.system_prompt(tools=["arxiv_search"])
+
+
+def test_citation_support_check_catches_numbers_from_memory():
+    """The live failure: Adam settings 'cited' to the LoRA introduction."""
+    from alice.library import unsupported_numbers
+    passages = {"L4": "LoRA freezes the pretrained weights and injects trainable rank decomposition matrices.",
+                "L7": "We used the Adam optimizer with beta1 = 0.9, beta2 = 0.98 and epsilon = 10^-9, "
+                      "with warmup_steps = 4000."}
+    reply = ("Adam with a learning rate of **0.0001**, beta2 = 0.98 [L4]. "
+             "They used beta2 = 0.98 and 4,000 warmup steps [L7]. Base models trained for 12 hours.")
+    flagged = unsupported_numbers(reply, passages)
+    assert ("0.0001", "[L4]") in flagged and ("0.98", "[L4]") in flagged
+    assert not any(labels == "[L7]" for _, labels in flagged)             # 0.98 and 4,000 are in L7
+    assert not any(num == "12" for num, _ in flagged)                    # uncited sentence: not checked
+    assert unsupported_numbers("Two tasks [L4].", passages) == []         # small integers are skipped

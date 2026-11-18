@@ -1,0 +1,39 @@
+{
+ "dim": 1024,
+ "block_rows": 262144,
+ "search": [
+  {
+   "chunks": 10000,
+   "approx_papers": 100,
+   "file_gb": 0.04,
+   "median_ms": 1.7,
+   "p95_ms": 1.9
+  },
+  {
+   "chunks": 100000,
+   "approx_papers": 1000,
+   "file_gb": 0.41,
+   "median_ms": 18.9,
+   "p95_ms": 21.3
+  },
+  {
+   "chunks": 300000,
+   "approx_papers": 3000,
+   "file_gb": 1.23,
+   "median_ms": 56.9,
+   "p95_ms": 64.6
+  },
+  {
+   "chunks": 1000000,
+   "approx_papers": 10000,
+   "file_gb": 4.1,
+   "median_ms": 184.5,
+   "p95_ms": 193.9
+  }
+ ],
+ "build": {
+  "chunks": 100000,
+  "sqlite_insert_s": 7.3,
+  "cache_build_s": 6.6
+ }
+}

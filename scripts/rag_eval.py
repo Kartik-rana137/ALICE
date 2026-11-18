@@ -85,7 +85,24 @@ QUESTIONS_2026 = [
      r"noisy teacher", [r"frozen", r"pre-?train"]),
     ("negative", None, "What do the papers in my library say about protein structure prediction?", None, []),
 ]
-QUESTION_SETS = {"famous": QUESTIONS, "2026": QUESTIONS_2026}
+# Papers referred to by nickname, not title ("the Transformer paper" = "Attention Is All You Need",
+# "the ResNet paper" = "Deep Residual Learning ..."). Found in a live CLI test: "Which optimizer settings
+# did the Transformer paper use?" never retrieved section 5.3. Use with the famous-papers library.
+QUESTIONS_ALIAS = [
+    ("alias-tf-opt", "1706.03762", "Which optimizer settings did the Transformer paper use?",
+     r"beta|β|warmup_steps", [r"0\.98", r"4,?000"]),
+    ("alias-tf-dropout", "1706.03762", "What dropout rate did the Transformer paper use for the base model?",
+     r"P\s?drop|Pdrop|residual dropout", [r"0\.1\b"]),
+    ("alias-tf-hw", "1706.03762", "How long did the Transformer paper train its big model, and on what hardware?",
+     r"3\.5 days|P100", [r"3\.5", r"P100"]),
+    ("alias-resnet-lr", "1512.03385", "What learning rate schedule did the ResNet paper use on ImageNet?",
+     r"divided by 10", [r"0\.1\b", r"divided by 10|10\s*x|factor of 10|by 10"]),
+    ("alias-resnet-cifar", "1512.03385", "How deep was the deepest network the ResNet paper trained on CIFAR-10?",
+     r"1202", [r"1202"]),
+    ("alias-resnet-shortcut", "1512.03385", "How does the ResNet paper handle shortcuts when the dimensions "
+     "increase?", r"zero[- ]padding|projection shortcut", [r"zero|projection"]),
+]
+QUESTION_SETS = {"famous": QUESTIONS, "2026": QUESTIONS_2026, "alias": QUESTIONS_ALIAS}
 
 
 def doc_arxiv_ids(library: Library) -> dict[int, str]:

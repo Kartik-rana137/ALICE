@@ -124,6 +124,7 @@ class LlamaServer(ServerProcess):
                "--reasoning-budget", str(p.reasoning_budget)]
         if p.n_cpu_moe:
             cmd += ["--n-cpu-moe", str(p.n_cpu_moe)]
+        cmd += list(p.extra_args)
         return cmd
 
 

@@ -43,10 +43,17 @@ def build_toolbox(args):
         for name in [n for n, t in box.tools.items() if t.external]:
             del box.tools[name]
     session = None
-    if config.EMBED_GGUF.exists():
-        from .library import Library, LibrarySession, LlamaEmbedder
+    from .library import Library, LibrarySession, LlamaEmbedder
+    if not config.EMBED_GGUF.exists():
+        if config.LIBRARY_DIR.joinpath("library.db").exists() and not Library().is_empty():
+            print(f"Library disabled: embedding model not found at {config.EMBED_GGUF} "
+                  "(see scripts/download_models.sh or [embedding] in alice.toml)")
+    else:
         lib = Library()
-        if not lib.is_empty():
+        problem = lib.embedding_problem()
+        if problem:
+            print(f"Library disabled: {problem}")
+        elif not lib.is_empty():
             session = LibrarySession(lib, LlamaEmbedder(gpu=False))
             session.embedder.start_in_background()                   # ~4 s on CPU, hidden behind typing
             box.add(*session.tools())
@@ -61,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         return library_cli.main(argv)
     ap = argparse.ArgumentParser(prog="alice", description="ALICE: local CS/AI mentor "
                                  "(subcommands: ingest, library)")
-    ap.add_argument("--model", choices=sorted(config.PROFILES), default="default",
+    ap.add_argument("--model", choices=sorted(config.PROFILES), default=config.DEFAULT_PROFILE,
                     help="model profile (see alice/config.py)")
     ap.add_argument("--think", action="store_true", help="start with thinking mode on")
     ap.add_argument("--show-thinking", action="store_true", help="print the model's reasoning text")
@@ -192,10 +199,14 @@ def _report_citations(library, reply: str) -> dict:
     if rep.unknown:
         print(f"WARNING: cites {', '.join('[' + l + ']' for l in rep.unknown)} which were never retrieved "
               "from your library. Treat those claims as unverified.")
+    if rep.unsupported:
+        print("WARNING: these numbers are not in the passages they cite: "
+              + "; ".join(f"{num} {labels}" for num, labels in rep.unsupported)
+              + ". They may come from the model's memory, not your papers.")
     if rep.cited or rep.unknown:
         print()
     return {"cited": [{"label": l, "doc": h.title, "page": h.page, "chunk": h.chunk_id} for l, h in rep.cited],
-            "unknown": rep.unknown}
+            "unknown": rep.unknown, "unsupported": [list(u) for u in rep.unsupported]}
 
 
 class _Printer:

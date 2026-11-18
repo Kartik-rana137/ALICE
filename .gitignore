@@ -7,3 +7,4 @@ benchmarks/results/server.log
 /logs/
 *.egg-info/
 /data/
+/alice.toml

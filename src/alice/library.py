@@ -17,7 +17,7 @@ import sqlite3
 import threading
 import time
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -26,6 +26,7 @@ import numpy as np
 from . import config
 from .llm import LLMError, ServerProcess, _post
 from .tools import Tool
+from .vectors import VectorIndex
 
 QUERY_INSTRUCTION = ("Given a question from a computer-science student, retrieve passages from "
                      "research papers or notes that answer it")
@@ -33,13 +34,19 @@ CHUNK_CHARS = 900
 MAX_PASSAGE_CHARS = 1000
 RRF_K = 60
 CANDIDATES = 30
-# Top-1 cosine similarity needed before passages are inserted automatically. Calibrated on the eval
-# library (Qwen3-Embedding-0.6B): paper questions 0.68-0.83, unrelated CS questions 0.22-0.58.
-AUTO_RETRIEVE_MIN_SIM = float(os.environ.get("ALICE_RETRIEVE_MIN_SIM", "0.65"))
+# Top-1 cosine similarity needed before passages are inserted automatically (configurable per embedding
+# model in alice.toml; recalibrate with scripts/calibrate_retrieval.py). For Qwen3-Embedding-0.6B: paper
+# questions 0.68-0.83, unrelated CS questions 0.22-0.58.
+AUTO_RETRIEVE_MIN_SIM = config.RETRIEVE_MIN_SIM
 # Similarity alone can't tell "a question about my papers" from "a general question on a topic my papers
 # cover" (a paraphrased Transformer-paper question scored 0.605, generic ML questions up to 0.58). When the
 # message itself points at papers/notes, a lower bar applies.
-AUTO_RETRIEVE_MIN_SIM_EXPLICIT = 0.50
+AUTO_RETRIEVE_MIN_SIM_EXPLICIT = config.RETRIEVE_MIN_SIM_EXPLICIT
+LEGACY_EMBED_MODEL = "Qwen3-Embedding-0.6B-Q8_0.gguf"     # libraries built before the model was recorded
+
+
+class LibraryError(RuntimeError):
+    """The library can't be used as configured (message tells the user what to do)."""
 REFERS_TO_LIBRARY = re.compile(r"\b(papers?|articles?|library|notes|according to|authors?|my (pdfs?|reading))\b",
                                re.I)
 SUPPORTED = {".pdf", ".md", ".txt"}
@@ -54,9 +61,13 @@ class Embedder(Protocol):
 
 
 class LlamaEmbedder:
-    """Qwen3-Embedding in its own llama-server (CPU by default so it never competes for VRAM)."""
+    """The embedding model in its own llama-server. Device comes from alice.toml ([embedding] device):
+    "cpu" by default so it never competes with the chat model for a small GPU."""
 
-    def __init__(self, gpu: bool = False, gguf: Path = config.EMBED_GGUF, port: int = config.EMBED_PORT):
+    def __init__(self, gpu: bool | None = None, gguf: Path = config.EMBED_GGUF, port: int = config.EMBED_PORT):
+        if gpu is None:
+            gpu = config.EMBED_DEVICE == "gpu"
+        self.gpu = gpu
         cmd = [str(config.SERVER_EXE), "-m", str(gguf), "--embedding", "--pooling", "last",
                "-c", "8192", "-b", "8192", "-ub", "8192", "-np", "1",
                "--host", config.HOST, "--port", str(port), "-ngl", "99" if gpu else "0"]
@@ -289,8 +300,14 @@ def rrf(rankings: list[list[int]], k: int = RRF_K) -> dict[int, float]:
 
 
 class Library:
-    def __init__(self, directory: Path = config.LIBRARY_DIR):
+    """One SQLite file (documents, chunks, embeddings, FTS5 keyword index, metadata) plus a memory-mapped
+    vector cache next to it. The library records which embedding model built it and refuses to mix
+    models: vectors from different embedders are not comparable (and may differ in dimension)."""
+
+    def __init__(self, directory: Path = config.LIBRARY_DIR, embed_model: str = config.EMBED_MODEL):
         directory.mkdir(parents=True, exist_ok=True)
+        self.dir = directory
+        self.embed_model = embed_model
         self.db = sqlite3.connect(directory / "library.db")
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS docs(id INTEGER PRIMARY KEY, path TEXT, sha256 TEXT UNIQUE,
@@ -298,13 +315,47 @@ class Library:
             CREATE TABLE IF NOT EXISTS chunks(id INTEGER PRIMARY KEY, doc_id INTEGER, page INTEGER,
                 ord INTEGER, text TEXT, embedding BLOB);
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(text, tokenize='porter unicode61');
+            CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
+            CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(doc_id);
         """)
         cols = {r[1] for r in self.db.execute("PRAGMA table_info(chunks)")}
         if "section" not in cols:                       # libraries created before section headers
             self.db.execute("ALTER TABLE chunks ADD COLUMN section TEXT")
-            self.db.commit()
-        self._matrix: np.ndarray | None = None
-        self._ids: np.ndarray | None = None
+        if self.meta("embed_model") is None and not self.is_empty():
+            self.set_meta("embed_model", LEGACY_EMBED_MODEL)   # built before the model was recorded
+        self.db.commit()
+        self.index = VectorIndex(
+            directory,
+            rows=lambda: self.db.execute("SELECT id, embedding FROM chunks ORDER BY id"),
+            count=lambda: self.db.execute("SELECT COUNT(*) FROM chunks").fetchone()[0],
+            stamp=lambda: f"{self.meta('version') or 0}:{self.meta('embed_model')}")
+
+    # ----- metadata
+    def meta(self, key: str) -> str | None:
+        row = self.db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row[0] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        self.db.execute("INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                        (key, value))
+
+    def _bump_version(self) -> None:
+        """Every change to the stored vectors bumps this counter; vector caches (also in other processes,
+        e.g. a running chat while `alice ingest` adds papers) compare it before each search."""
+        self.set_meta("version", str(int(self.meta("version") or 0) + 1))
+
+    def embedding_problem(self) -> str | None:
+        """A user-facing message if this library was built with a different embedding model."""
+        built_with = self.meta("embed_model")
+        if built_with and built_with != self.embed_model and not self.is_empty():
+            return (f"the library at {self.dir} was built with {built_with}, but the configured embedding "
+                    f"model is {self.embed_model}. Run `alice library --rebuild` to re-embed it.")
+        return None
+
+    def _check_compatible(self) -> None:
+        problem = self.embedding_problem()
+        if problem:
+            raise LibraryError(problem)
 
     # ----- ingestion
     def add(self, path: Path, embedder: Embedder, title: str | None = None,
@@ -314,6 +365,7 @@ class Library:
         With `section_headers`, each chunk is indexed and embedded together with its section heading
         ("contextual chunk headers"): a passage under "3.1 Pre-training BERT" that never repeats
         "pre-training" can still be found by a question about BERT's pre-training tasks."""
+        self._check_compatible()
         path = Path(path)
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         row = self.db.execute("SELECT title FROM docs WHERE sha256=?", (sha,)).fetchone()
@@ -335,14 +387,22 @@ class Library:
                                 (doc_id, page, n, text, vec.astype(np.float32).tobytes(), section))
             self.db.execute("INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)",
                             (c.lastrowid, f"{section}\n{text}" if section else text))
+        self.set_meta("embed_model", self.embed_model)
+        self.set_meta("embed_dim", str(len(vectors[0])))
+        self._bump_version()
         self.db.commit()
-        self._matrix = None
+        self.index.invalidate()
         return "added", len(items), title
 
     def rebuild(self, embedder: Embedder, section_headers: bool = True) -> list[tuple[str, str, int]]:
-        """Re-ingest every document from its original file (keeps titles). [(title, status, chunks)]."""
+        """Re-ingest every document from its original file with the current pipeline and embedding
+        model (keeps titles). [(title, status, chunks)]."""
+        docs = self.documents()
+        self.set_meta("embed_model", self.embed_model)      # switching models: the old vectors all go
+        self._bump_version()
+        self.db.commit()
         out = []
-        for doc_id, title, _, _, _, path in self.documents():
+        for doc_id, title, _, _, _, path in docs:
             if not Path(path).exists():
                 out.append((title, "missing file", 0))
                 continue
@@ -356,8 +416,9 @@ class Library:
         self.db.executemany("DELETE FROM chunks_fts WHERE rowid=?", [(i,) for i in ids])
         self.db.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
         n = self.db.execute("DELETE FROM docs WHERE id=?", (doc_id,)).rowcount
+        self._bump_version()
         self.db.commit()
-        self._matrix = None
+        self.index.invalidate()
         return n > 0
 
     def set_title(self, doc_id: int, title: str) -> bool:
@@ -373,22 +434,16 @@ class Library:
         return self.db.execute("SELECT 1 FROM docs LIMIT 1").fetchone() is None
 
     # ----- search
-    def _load_matrix(self) -> None:
-        rows = self.db.execute("SELECT id, embedding FROM chunks ORDER BY id").fetchall()
-        self._ids = np.array([r[0] for r in rows], dtype=np.int64)
-        self._matrix = (np.vstack([np.frombuffer(r[1], dtype=np.float32) for r in rows])
-                        if rows else np.zeros((0, 1), dtype=np.float32))
-
     def dense_ranking(self, query: str, embedder: Embedder, n: int = CANDIDATES) -> list[tuple[int, float]]:
         """[(chunk_id, cosine similarity)] best first."""
-        if self._matrix is None:
-            self._load_matrix()
-        if len(self._ids) == 0:
+        self._check_compatible()
+        if len(self.index) == 0:
             return []
         q = embedder.embed([query], query=True)[0]
-        sims = self._matrix @ q
-        top = np.argsort(-sims)[:n]
-        return [(int(self._ids[i]), float(sims[i])) for i in top]
+        try:
+            return self.index.search(q, n)
+        except ValueError as e:                          # dimension mismatch: different embedding model
+            raise LibraryError(str(e)) from None
 
     def keyword_ranking(self, query: str, n: int = CANDIDATES) -> list[int]:
         q = fts_query(query)
@@ -402,6 +457,9 @@ class Library:
         return [r[0] for r in rows]
 
     def search(self, query: str, embedder: Embedder, k: int = 5, mode: str = "hybrid") -> list[Hit]:
+        """mode: hybrid (dense + keyword fused with RRF; the default), dense, or keyword.
+        (Document routing was tried 2026-11-18 and reverted: it did not fix nickname questions and lowered
+        MRR on both eval sets; see DEVLOG.)"""
         rankings, sims = [], {}
         if mode in ("hybrid", "dense"):
             dense = self.dense_ranking(query, embedder)
@@ -425,6 +483,34 @@ class Library:
 class CitationReport:
     cited: list[tuple[str, Hit]]           # labels the reply used that were really retrieved
     unknown: list[str]                     # labels that were never retrieved (fabricated)
+    unsupported: list[tuple[str, str]] = field(default_factory=list)   # (number, labels) not in the cited text
+
+
+# Numbers worth checking: decimals, percentages, and integers >= 10 (small integers are often written
+# as words in papers: "two tasks").
+_CLAIM_NUM = re.compile(r"(?<![\w.\[])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d{2,})(\s*%)?(?![\w\]])")
+
+
+def _norm_numbers(text: str) -> set[str]:
+    return {m.group(1).replace(",", "") for m in _CLAIM_NUM.finditer(text)}
+
+
+def unsupported_numbers(reply: str, passages: dict[str, str]) -> list[tuple[str, str]]:
+    """For each sentence that cites [Lk] labels, numbers that appear in none of the cited passages.
+
+    Found in the live test: the model answered from memory ("learning rate 0.0001") and attached real but
+    irrelevant labels ([L4] = the LoRA introduction). Checking that a label was retrieved is not enough;
+    this checks that the cited text actually contains the numbers it is cited for."""
+    out = []
+    for sentence in re.split(r"(?<=[.!?])\s+|\n+", reply):
+        labels = [l for l in LibrarySession.LABEL.findall(sentence) if l in passages]
+        if not labels:
+            continue
+        source = _norm_numbers(" ".join(passages[l] for l in labels))
+        for num in sorted(_norm_numbers(LibrarySession.LABEL.sub("", sentence))):
+            if num not in source:
+                out.append((num, ", ".join(f"[{l}]" for l in labels)))
+    return out
 
 
 class LibrarySession:
@@ -451,6 +537,8 @@ class LibrarySession:
             hits = self.library.search(query, self.embedder, k=k)
         except LLMError as e:
             return f"error: embedding server problem: {e}"
+        except LibraryError as e:
+            return f"error: {e}"
         if not hits:
             return "no matching passages in the library"
         parts = []
@@ -481,7 +569,7 @@ class LibrarySession:
                  {"type": "object", "properties": {}}, self.list_library),
         ]
 
-    def prefetch(self, user_text: str, k: int = 5, min_similarity: float | None = None
+    def prefetch(self, user_text: str, k: int = config.PREFETCH_K, min_similarity: float | None = None
                  ) -> tuple[list[dict], list[Hit]]:
         """Retrieval-first RAG for small models: search the library for the user's message and, if the
         best passage is relevant enough, return a synthetic search_library call + result to insert into
@@ -492,7 +580,7 @@ class LibrarySession:
                               else AUTO_RETRIEVE_MIN_SIM)
         try:
             hits = self.library.search(user_text, self.embedder, k=k)
-        except LLMError:
+        except (LLMError, LibraryError):
             return [], []
         best = max((h.similarity for h in hits if h.similarity is not None), default=0.0)
         if not hits or best < min_similarity:
@@ -520,4 +608,5 @@ class LibrarySession:
                 cited.append((label, self.labels[label]))
             else:
                 unknown.append(label)
-        return CitationReport(cited, unknown)
+        passages = {label: f"{hit.section or ''} {hit.text}" for label, hit in self.labels.items()}
+        return CitationReport(cited, unknown, unsupported_numbers(reply, passages))

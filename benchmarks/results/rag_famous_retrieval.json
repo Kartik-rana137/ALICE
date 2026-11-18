@@ -1,0 +1,212 @@
+{
+ "library": "data\\eval_library",
+ "k": 5,
+ "documents": [
+  "Adam: A Method for Stochastic Optimization",
+  "Deep Residual Learning for Image Recognition",
+  "Attention Is All You Need",
+  "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+  "LoRA: Low-Rank Adaptation of Large Language Models"
+ ],
+ "set": "famous",
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "10/10",
+   "mrr": 0.883,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "8/10",
+   "mrr": 0.72,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 5,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "10/10",
+   "mrr": 0.795,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": true,
+     "rank": 5,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ }
+}

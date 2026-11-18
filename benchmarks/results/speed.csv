@@ -1,0 +1,7 @@
+﻿date,model,ngl,n_cpu_moe,test,tokens_per_s,stddev,label
+2026-11-18,Qwen3.5-2B-Q4_K_M,99,0,pp512,778.96,1.98,baseline
+2026-11-18,Qwen3.5-2B-Q4_K_M,99,0,tg128,126.34,1.43,baseline
+2026-11-18,Qwen3.5-4B-Q4_K_M,99,0,pp512,303.26,0.34,baseline
+2026-11-18,Qwen3.5-4B-Q4_K_M,99,0,tg128,65.32,0.10,baseline
+2026-11-18,Qwen3.5-9B-Q4_K_M,99,0,pp512,162.37,0.09,baseline
+2026-11-18,Qwen3.5-9B-Q4_K_M,99,0,tg128,39.39,0.11,baseline

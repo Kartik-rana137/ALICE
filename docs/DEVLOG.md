@@ -523,3 +523,31 @@ Goal: ALICE must keep working, and get better, when the hardware is upgraded.
 
 ### Tests
 90 passing (config portability and validation, profile overrides, model-mismatch refusal and rebuild, legacy adoption, vector index vs brute force across blocks, cache reuse/rebuild with a second mapped handle, citation support check).
+
+---
+
+## 2026-11-18 — Chat box (full-screen terminal UI)
+
+New: a full-screen chat box, `alice tui` (same options as `alice`).
+
+### Design
+- **Textual 8.2** (pure-Python TUI framework; runs in Windows Terminal, VS Code, macOS/Linux terminals). Added as a dependency.
+- Layout: header, scrolling conversation (your messages in one style of bubble, ALICE's replies rendered as **Markdown** - code blocks, bold, lists - streamed and re-rendered at most every 80 ms), tool activity lines (`▸ calculate: 37 * 89` / `◂ ok: ...`), library/sources/warnings lines, a status bar (model, thinking, tools, library size, last-turn speed), an input box, and a key footer.
+- run_python permission is a **modal dialog** showing the code with syntax highlighting (y/n/Esc). The agent runs in a worker thread and waits for the dialog through an event.
+- Keys: Enter send, Esc stop the reply, Ctrl+T thinking, Ctrl+R new conversation, Ctrl+L clear screen, Ctrl+Q quit; the /commands work too.
+- **Refactor:** the chat logic moved from `cli.py` into `session.py` (`ChatSession`: tools, library, automatic retrieval, reference guard, agent loop, citation/support/calculator checks, transcripts) so the line CLI and the chat box share one implementation. The leaked-`<tool_call>` filter became a reusable `StreamFilter`.
+- **Stop:** `run_turn` takes a cancel event, checked on every streamed event and between tool rounds; closing the stream closes the HTTP connection so llama-server stops generating. Stopped exchanges are not kept in memory.
+- Also fixed while refactoring: the chat embedder was created with `gpu=False`, ignoring the new `[embedding] device` setting.
+
+### Snags found by running it for real (the fake-session tests passed first time)
+1. **Handler name collision:** the method `on_ready(started)` is also Textual's handler for its built-in `Ready` event (first paint). Textual called it immediately, enabling the input before the model had loaded; questions then hit an unstarted session ("'NoneType' object has no attribute 'add_user'"). Renamed to `session_ready`; regression test with a slow fake start; `ChatSession.ask()` now fails clearly if called before `start()`.
+2. **SQLite and threads:** the library is opened on the UI thread and searched on the worker thread; Python's sqlite3 refuses cross-thread use by default. This SQLite build is "serialized" (`sqlite3.threadsafety == 3`), so the connection is shared with `check_same_thread=False` (only when serialized); chat-time use is read-only; the UI no longer queries the library size on every status refresh. Regression test searches from another thread.
+3. **Citation format drift:** the 9B cited "(L1)" instead of "[L1]", so no sources line appeared. The checker now accepts both (only retrieved labels count).
+
+### Verification
+- Headless UI tests (Textual's `run_test` pilot, fake session): streaming, tool lines, the dialog (approve and decline), sources, leaked-markup filtering, Ctrl+T/Ctrl+R, Esc stopping a reply, input disabled until the model loads.
+- Real end-to-end run driving the chat box headlessly with the 9B and the eval library: paper question -> library passages (incl. 5.3 Optimizer) -> answer with warmup_steps = 4000; "What is 37 * 89?" -> calculator -> 3293; status "last 24.2s · 71 tok · 36 tok/s · tools: calculate".
+- Tests: 96 passing.
+
+### Tone decision (2026-11-18)
+- Teasing the student is fine. The occasional opener like "...before you try to calculate it in your head and embarrass yourself" is accepted, not a bug. The persona rules stay as they are (they still prevent insults, pet names and scolding), but tone drift toward teasing is no longer a target for further tuning or evaluation.

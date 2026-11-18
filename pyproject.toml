@@ -7,7 +7,11 @@ name = "alice"
 version = "0.1.0"
 description = "Local AI mentor for CS/AI coding, study and research"
 requires-python = ">=3.11"          # tomllib
-dependencies = ["pypdf>=5", "numpy>=1.26"]   # paper library (Phase 3); the rest is stdlib
+dependencies = [
+    "pypdf>=5",         # paper library: PDF text
+    "numpy>=1.26",      # paper library: vector search
+    "textual>=8.2",     # chat box UI (alice tui)
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

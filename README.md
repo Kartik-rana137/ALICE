@@ -34,7 +34,8 @@ search at 100k chunks (~1,000 papers) and ~185 ms at 1M chunks (~10,000 papers).
 ## Use
 
 ```
-.venv\Scripts\alice                       # chat; starts llama-server automatically
+.venv\Scripts\alice tui                   # chat box (full-screen terminal UI); starts the model automatically
+.venv\Scripts\alice                       # line-based chat (same options)
 .venv\Scripts\alice --think               # thinking mode on (slower, best at maths/logic)
 .venv\Scripts\alice --workspace C:\code\proj   # let ALICE read files in that folder (default: current dir)
 .venv\Scripts\alice --offline             # no internet tools (arXiv)
@@ -42,7 +43,10 @@ search at 100k chunks (~1,000 papers) and ~185 ms at 1M chunks (~10,000 papers).
 .venv\Scripts\alice library               # list library documents (--remove ID, --retitle ID TITLE)
 ```
 
-In the chat: `/think on|off`, `/tools`, `/reset`, `/help`, `/quit`; Ctrl+C stops a reply.
+Chat box keys: Enter send · Esc stop a reply · Ctrl+T thinking on/off · Ctrl+R new conversation ·
+Ctrl+L clear the screen · Ctrl+Q quit. Use Windows Terminal or the VS Code terminal (the old console
+window renders it poorly). In the line-based chat, Ctrl+C stops a reply.
+Both understand `/think on|off`, `/tools`, `/reset`, `/help`, `/quit`.
 
 Tools: `calculate`, `run_python` (asks before running), `list_files` / `read_file` / `search_text` (read-only, workspace only), `arxiv_search` / `arxiv_paper` (internet), and `search_library` / `list_library` when your library has documents. Answers from the library cite passages as `[L1]`, `[L2]`; ALICE lists the sources after the reply and warns about any citation that was not actually retrieved.
 

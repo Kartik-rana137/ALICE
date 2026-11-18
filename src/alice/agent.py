@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Callable
@@ -47,13 +48,15 @@ def run_turn(messages: list[dict], profile: Profile, toolbox: ToolBox | None = N
              on_tool: Callable[[ToolResult], None] | None = None,
              on_tool_start: Callable[[str, str], None] | None = None,
              confirm: Callable[[Tool, dict], bool] | None = None,
-             max_rounds: int = MAX_TOOL_ROUNDS) -> TurnResult:
+             max_rounds: int = MAX_TOOL_ROUNDS, cancel: threading.Event | None = None) -> TurnResult:
     """`messages` is the full request context (system + history + new user message).
 
     Streams every model round through `on_event`; executes tool calls via `toolbox` and reports
     them through `on_tool`. Returns the new messages so the caller can store them in history.
     Guards against small-model tool loops: identical failed calls are not re-run, and the last round
     offers no tools plus a note asking for a plain-text answer.
+    If `cancel` gets set (e.g. the chat box's Stop key), streaming stops - which closes the connection so
+    llama-server stops generating - and the result comes back with finish == "interrupted".
     """
     t0 = time.time()
     specs = toolbox.specs() if toolbox and toolbox.tools else None
@@ -62,6 +65,10 @@ def run_turn(messages: list[dict], profile: Profile, toolbox: ToolBox | None = N
     result = TurnResult(reply="", messages=new)
     force_final = False
     for round_no in range(1, max_rounds + 1):
+        if cancel is not None and cancel.is_set():   # stopped while a tool was running
+            result.finish = "interrupted"
+            result.seconds = round(time.time() - t0, 1)
+            return result
         result.rounds = round_no
         final = force_final or round_no == max_rounds or not specs
         request = messages + new
@@ -69,7 +76,14 @@ def run_turn(messages: list[dict], profile: Profile, toolbox: ToolBox | None = N
             request = request + [{"role": "user", "content": FINAL_ROUND_NOTE}]
         content: list[str] = []
         calls: list[dict] = []
-        for ev in chat_stream(request, profile, thinking=thinking, tools=None if final else specs):
+        stream = chat_stream(request, profile, thinking=thinking, tools=None if final else specs)
+        for ev in stream:
+            if cancel is not None and cancel.is_set():
+                stream.close()                  # closes the HTTP response: the server stops generating
+                result.finish = "interrupted"
+                result.reply = "".join(content)
+                result.seconds = round(time.time() - t0, 1)
+                return result
             if on_event:
                 on_event(ev)
             if ev.kind == "content":

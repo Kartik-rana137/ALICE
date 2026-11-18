@@ -308,7 +308,10 @@ class Library:
         directory.mkdir(parents=True, exist_ok=True)
         self.dir = directory
         self.embed_model = embed_model
-        self.db = sqlite3.connect(directory / "library.db")
+        # The chat box opens the library on the UI thread and searches it on a worker thread. SQLite here
+        # is built "serialized" (sqlite3.threadsafety == 3), so one connection may be shared; Python's
+        # same-thread check is only a conservative default. Chat-time use is read-only.
+        self.db = sqlite3.connect(directory / "library.db", check_same_thread=sqlite3.threadsafety != 3)
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS docs(id INTEGER PRIMARY KEY, path TEXT, sha256 TEXT UNIQUE,
                 title TEXT, pages INTEGER, added TEXT);
@@ -516,7 +519,8 @@ def unsupported_numbers(reply: str, passages: dict[str, str]) -> list[tuple[str,
 class LibrarySession:
     """Per-chat state: labels passages shown to the model and checks the labels it cites."""
 
-    LABEL = re.compile(r"\[(L\d+)\]")
+    # [L1] as instructed; the 9B sometimes writes (L1). Only labels that were retrieved count as cited.
+    LABEL = re.compile(r"[\[(](L\d+)[\])]")
 
     def __init__(self, library: Library, embedder: Embedder):
         self.library = library

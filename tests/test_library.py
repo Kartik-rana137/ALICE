@@ -178,3 +178,30 @@ def test_citation_support_check_catches_numbers_from_memory():
     assert not any(labels == "[L7]" for _, labels in flagged)             # 0.98 and 4,000 are in L7
     assert not any(num == "12" for num, _ in flagged)                    # uncited sentence: not checked
     assert unsupported_numbers("Two tasks [L4].", passages) == []         # small integers are skipped
+
+
+def test_library_can_be_searched_from_another_thread(tmp_path):
+    """Regression: the chat box opens the library on the UI thread and searches it on a worker thread."""
+    import threading
+    (tmp_path / "n.md").write_text("# Notes\n\nThe warmup lasts 4000 steps. " * 5, encoding="utf-8")
+    lib = Library(tmp_path / "lib")
+    lib.add(tmp_path / "n.md", FakeEmbedder())
+    found, errors = [], []
+
+    def worker():
+        try:
+            found.extend(lib.search("warmup steps", FakeEmbedder(), k=1))
+        except Exception as e:
+            errors.append(e)
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    assert not errors and found
+
+
+def test_citations_in_parentheses_are_recognised(lib):
+    library, emb = lib
+    s = LibrarySession(library, emb)
+    s.search_library("attention heads", k=1)
+    rep = s.check("From your copy of the paper (L1), there are eight heads.")
+    assert [l for l, _ in rep.cited] == ["L1"] and rep.unknown == []

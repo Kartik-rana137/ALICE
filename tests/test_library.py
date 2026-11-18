@@ -96,7 +96,7 @@ def test_session_labels_and_citation_check(lib):
 def test_persona_tool_guidance_only_for_available_tools():
     p = persona.system_prompt(tools=["calculate"])
     assert "calculate:" in p and "search_library" not in p and "arxiv_search" not in p
-    assert persona.system_prompt(tools=[]) == persona.SYSTEM_PROMPT
+    assert "Tools (" not in persona.system_prompt(tools=[])
 
 
 def test_prefetch_inserts_tool_exchange_only_when_relevant(lib):
@@ -115,3 +115,51 @@ def test_explicit_paper_references_lower_the_retrieval_bar():
     assert REFERS_TO_LIBRARY.search("What warmup did the Transformer paper use?")
     assert REFERS_TO_LIBRARY.search("according to my notes, what is LoRA?")
     assert not REFERS_TO_LIBRARY.search("What does the softmax function do?")
+
+
+def test_heading_detection_pdf_and_markdown():
+    from alice.library import heading_of
+    assert heading_of("3.1 Pre-training BERT") == "3.1 Pre-training BERT"
+    assert heading_of("5 Experiments") == "5 Experiments"
+    assert heading_of("A.2 Hyperparameter Details") == "A.2 Hyperparameter Details"
+    for not_heading in ["12 34.5 56.1 78.0", "1 We train the model for three epochs and report results.",
+                        "2 Dropout rate = 0.1", "A Transformer uses attention", "Task #1: Masked LM"]:
+        assert heading_of(not_heading) is None, not_heading
+    assert heading_of("## Attention heads", markdown=True) == "Attention heads"
+    assert heading_of("#hashtag", markdown=True) is None
+
+
+def test_split_sections_carries_heading_across_pages():
+    from alice.library import split_sections
+    p1 = "intro text\n3.1 Pre-training BERT\nWe pre-train BERT using two tasks."
+    parts, sec = split_sections(p1, None)
+    assert parts == [(None, "intro text"), ("3.1 Pre-training BERT", "We pre-train BERT using two tasks.")]
+    parts2, sec2 = split_sections("Task #1: Masked LM is described here.", sec)
+    assert parts2 == [("3.1 Pre-training BERT", "Task #1: Masked LM is described here.")]
+
+
+def test_section_headers_make_heading_words_searchable(tmp_path):
+    (tmp_path / "bert.md").write_text("# BERT notes\n\n## Pre-training tasks\n\n"
+                                      "Task one is the Masked LM objective. Task two predicts the next sentence.\n\n"
+                                      "## Fine-tuning\n\nWe fine-tune on GLUE with a small learning rate.\n",
+                                      encoding="utf-8")
+    emb = FakeEmbedder()
+    with_sec = Library(tmp_path / "a"); with_sec.add(tmp_path / "bert.md", emb)
+    without = Library(tmp_path / "b"); without.add(tmp_path / "bert.md", emb, section_headers=False)
+    top = with_sec.search("pre-training", emb, k=1, mode="keyword")
+    assert top and "Masked LM" in top[0].text and top[0].section == "Pre-training tasks"
+    assert "(Pre-training tasks)" in top[0].where
+    assert not without.search("pre-training", emb, k=1, mode="keyword")
+
+
+def test_reference_guard_triggers_on_named_work_not_on_everyday_questions():
+    for q in ["What are the two variants of BQ-LoRA called?", "What serves as the noisy teacher in Ambient SFT?",
+              "How did the E4B pass rate change?", "What did the Kernel Reality Check paper find?",
+              "Is Gemma 4 better than Gemma 3?"]:
+        assert persona.needs_reference_guard(q), q
+    for q in ["How does a hash table work?", "Why is my CUDA kernel slow on the GPU?", "Explain SGD with momentum.",
+              "What's the time complexity of quicksort?", "How do I parse JSON in Python?"]:
+        assert not persona.needs_reference_guard(q), q
+    p = persona.system_prompt(tools=["arxiv_search"], guard=True)
+    assert "do not actually know it" in p and "arxiv_search to look it up" in p
+    assert "do not actually know it" not in persona.system_prompt(tools=["arxiv_search"])

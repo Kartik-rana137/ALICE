@@ -8,7 +8,7 @@ Newest entries at the bottom. Record decisions with their *why* — future-me wr
 ## 2026-11-18 — Project kickoff & feasibility assessment
 
 ### Goal
-A locally-run conversational AI (real-time voice, persona, memory, optional avatar) specialised for **coding, academic study and research assistance** instead of entertainment.
+A locally-run conversational AI with a persona (optionally real-time voice, memory and an avatar), specialised for **coding, academic study and research assistance**.
 
 ### Hardware (baseline, "Gen 0")
 | Part | Spec | Implication |
@@ -87,7 +87,7 @@ A conversational AI companion like this is not one model; it is a **pipeline**:
 - **Persona:** mentor first, with a slight touch of sass. Teaches and guides rather than just answering; light teasing is fine, but never at the cost of clarity or correctness.
 - **Scope:** personal assistant only, for now. No public streaming/performance.
 - **Consequences:**
-  - No need for chat-moderation, stream-overlay or audience-interaction features; drops a chunk of the original feature set.
+  - No need for chat-moderation, stream-overlay or audience-interaction features; drops a large chunk of the original feature set.
   - Avatar (Phase 6) becomes lower priority and purely optional.
   - Persona work should focus on pedagogy: asking guiding questions, explaining reasoning, admitting uncertainty, flagging unverified citations. Sass is a style layer on top.
   - Thesis angle "persona consistency / mentor-style tutoring vs. plain answering" is now a stronger candidate.
@@ -402,3 +402,79 @@ Library question -> searched, cited [L1] (Attention Is All You Need p. 7), corre
 - [ ] Eval set built from papers the model cannot know + more questions, multiple runs (thesis-grade)
 - [ ] Skip arXiv lookups when the library already has the paper; trim pre-tool narration
 - [ ] Real sandbox for run_python (e.g. a restricted user or container) if it is ever auto-approved
+
+---
+
+## 2026-11-18 — Improvement round 2: retrieval, latency, an honest RAG test
+
+### Retrieval: section-aware chunking (and an ablation that corrected my explanation)
+- **Snag:** "What are BERT's two pre-training tasks?" missed in every mode. The evidence chunk ("Task #1: Masked LM ...") ranked 7th-8th. The words "pre-training tasks" only appear in the section heading "3.1 Pre-training BERT", not in the passage.
+- **Why not a reranker:** the standard fix, but the 9B leaves ~0.5 GB VRAM, so a reranker would run on the CPU (~150 tok/s measured for the 0.6B embedder) -> ~10-20 s extra per question. Rejected for now.
+- **Fix:** detect numbered section headings in PDFs (and `#` headings in Markdown), split pages at headings, carry the current section across page breaks, store it per chunk, index/embed `title | section` with the chunk, and show it in citations ("BERT ..., p. 4 (3.1 Pre-training BERT)"). `alice library --rebuild` re-ingests old libraries; heading detection rejects table rows, equations and sentences (unit-tested).
+- **Ablation** (famous-papers set, top-5):
+
+| Pipeline | keyword | dense | hybrid |
+|---|---|---|---|
+| page chunks (before) | 9/10, MRR 0.85 | 8/10, 0.70 | 9/10, 0.82 |
+| section-aligned chunks, no header text | 10/10, 0.88 | 8/10, 0.67 | 10/10, 0.80 |
+| section-aligned chunks + header text | 10/10, 0.88 | 8/10, 0.72 | 10/10, 0.80 |
+
+- **Lesson:** the miss was fixed by *splitting at headings* (the "Task #1" passage now starts its own chunk instead of trailing the previous section), not by the header text, which only helps dense search. Without the ablation I would have credited the wrong mechanism.
+
+### Latency
+- Measured: CPU embedding server start 4.1 s; one retrieval (embed query + search) 0.2 s. **Fix:** the embedder now warms up in a background thread when the chat starts, so the 4 s overlap with typing (thread-safe start).
+- Inserted passages are ~3.3-3.9k characters (~1k tokens); at ~160 tok/s prompt processing that is ~6 s per library-backed turn. Evidence ranks with hybrid search: 1 for 7/10 questions, but 4 and 5 for two of them, so prefetch now inserts 5 passages (+~1.5 s) instead of 4.
+- Not done on purpose: keyword search alone ranked every evidence chunk in the top 3 on this set, so weighting BM25 above dense is tempting, but tuning fusion weights on the 10 questions used to evaluate them would be overfitting. Revisit with an independent question set.
+
+### Snag: the eval overwrote its own results
+- Running `rag_eval.py --retrieval-only` rewrote `benchmarks/results/rag_eval.json`, which held the committed answer results. Restored from git; output files are now named `rag_<set>_<mode>.json` and never shared between modes.
+
+### A RAG test the model cannot cheat on
+- The famous-paper set can't show whether RAG adds knowledge (the model knew 8/10 answers without it). New set: 5 arXiv papers from **2026-11-17** (BQ-LoRA, The Kernel Reality Check, MoE-LoRA multilingual study, Gemma 4 MATLAB QLoRA, Ambient SFT), 13 questions with answers taken from the abstracts (checked against the extracted text) + 1 off-topic negative. `scripts/rag_eval.py --set 2026`.
+- New eval mode `--closed-book`: the model with no library at all, to measure what it knows alone.
+- Small snag: piping arXiv's Atom XML through Git Bash corrupted the encoding (surrogate characters); parsing a saved file with ALICE's own arXiv parser worked.
+- Retrieval on the 2026 set: keyword 12/13 (MRR 0.87), dense 10/13 (0.62), **hybrid 13/13 (0.82)** - the first set where fusion beats both parts. All 5 titles detected automatically.
+
+### The headline result: does the library add knowledge? (2026 papers, single run)
+| | closed-book (no library) | retrieval-first (prefetch) |
+|---|---|---|
+| all key facts correct | **0/13** | **12/13** |
+| cites >= 1 passage / right paper | 0/13 | 12/13 |
+| fabricated citation labels | 0 | 0 |
+
+- RAG is the only reason ALICE can answer these. Remaining RAG errors: one answer used a passage about a 10-language pilot instead of the abstract's 200 languages; one had correct facts but no citation.
+
+### Honesty when the model does NOT know (closed-book, graded by hand)
+- **Snag:** without the library, persona v3.1 confabulated: invented BQ-LoRA "variants" ("Block-Q / Block-KV"), a "50%" storage figure, Ambient-SFT mechanics; it also claimed things don't exist ("there's no such thing as Gemma 4, the latest is Gemma 2") - treating its training cutoff as the present - and belittled the student twice ("another student trying to compare apples and oranges without even realizing it", "let me guess, you didn't read the paper").
+- **Fixes (persona v3.2):** today's date in the system prompt + "your training data ends long before today; never claim something doesn't exist because you don't know it"; "say so in your first sentence, don't describe what an unknown paper probably does"; the student is framed as a capable colleague and humour is aimed at the topic (the "teasing remark about the situation" opener style was removed because it kept turning into teasing the person). Plus an **unverified-reference guard**: when a message names specific work (paper/study/authors, or named methods like BQ-LoRA, Gemma 4) and no library passage matched, a note at the end of the system prompt says "if you don't know it, say so; use arxiv_search".
+- **Snag in the measurement:** the regex "admits unknown" detector reported 5 -> 9 -> 9 but is too generous (it counts "...by 75%. However, I may not have details" as an admission). Hand grades (C clean admission, D false denial, H hedge-then-guess, F fabrication; `benchmarks/results/manual_grades_2026_closedbook.json`):
+
+| Setup | C | D | H | F |
+|---|---|---|---|---|
+| v3.1 | 4 | 3 | 0 | 6 |
+| v3.2, guard off | 9 | 0 | 0 | 4 |
+| v3.2, guard on (no arXiv tool) | 5 | 0 | 3 | 5 |
+
+- The persona rewrite removed the false denials and roughly doubled clean admissions. The guard showed no benefit in this setup (13 answers, temperature 0.7: differences of 1-2 are noise).
+- **But that test missed the guard's purpose:** in the real CLI the guard tells the model to *use arxiv_search*, and the closed-book eval had no arXiv tool. Re-run with the arXiv tools available (`rag_eval.py --closed-book --arxiv`):
+
+| | guard off | guard on |
+|---|---|---|
+| arXiv actually searched | 4/13 | **8/13** |
+| all key facts correct | 3/13 | **8/13** |
+| condescending replies | 0/14 | 0/14 |
+
+- Decision: **guard stays on.** Its value is triggering lookups, not phrasing.
+- Of the 5 guard-on answers that still skipped arXiv, 4 fabricated (e.g. "75%"; "BQ-LoRA stands for Bit-Quality Low-Rank Adaptation") and 1 claimed "I've searched for this ... cannot find it" without calling any tool - a **fabricated tool use**, a new failure type to track.
+- Tone across all v3.2 runs: 0 condescending replies by the regex screen (0/14, 0/14, 0/14, 0/14, plus 0/16 openers), all openers aimed at the topic. Regex screening only; occasional off-topic openers remain ("The fashion industry is surprisingly resilient...").
+
+### Tool tidy-ups (same round)
+- Library passages now say they are the student's own copies ("no need to look these up elsewhere") and the arXiv guidance says not to search arXiv for papers the library already covers (the live CLI test had redundant arXiv lookups).
+- Tool guidance: "do not narrate tool use ('let me check...'); just call the tool."
+
+
+### Next
+- [ ] Opt-in automatic arXiv lookup when the guard fires (like library prefetch). Must be opt-in: it would send the question text to arxiv.org without an explicit request.
+- [ ] Detect fabricated tool use ("I searched..." with no tool call) the way citations and calculations are checked.
+- [ ] Repeat the honesty/tone evals with several seeds and a larger question set; hand-grade a sample, use regexes only for screening.
+- [ ] Hardware note: larger unified-memory and GPU configurations should allow larger default models and reduce small-model failures.

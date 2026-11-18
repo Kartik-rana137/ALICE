@@ -139,8 +139,9 @@ def test_persona_opener_style_is_appended_and_random_choice_is_valid():
     style = persona.pick_opener_style(random.Random(0))
     assert style in persona.OPENER_STYLES
     assert persona.system_prompt(style).startswith(persona.SYSTEM_PROMPT)
-    assert style in persona.system_prompt(style)
-    assert persona.system_prompt(None) == persona.SYSTEM_PROMPT
+    assert persona.system_prompt(style).rstrip().endswith(style + ".")      # style note comes last
+    import datetime
+    assert "Today's date: 2026-11-18." in persona.system_prompt(None, today=datetime.date(2026, 11, 18))
     assert "Another day" not in persona.SYSTEM_PROMPT      # don't prime the stock opener
 
 

@@ -42,7 +42,7 @@ def ingest(args) -> int:
         for f in files:
             t = time.time()
             try:
-                status, n, title = lib.add(f, emb, title=args.title)
+                status, n, title = lib.add(f, emb, title=args.title, section_headers=not args.no_sections)
             except LLMError as e:
                 print(f"error: {e}")
                 return 1
@@ -60,6 +60,16 @@ def library(args) -> int:
     lib = Library()
     if args.remove is not None:
         print("removed" if lib.remove(args.remove) else f"no document with id {args.remove}")
+        return 0
+    if args.rebuild:
+        gpu = not server_healthy()
+        emb = LlamaEmbedder(gpu=gpu)
+        print(f"Rebuilding the index on {'GPU' if gpu else 'CPU'} ...")
+        try:
+            for title, status, n in lib.rebuild(emb):
+                print(f"  {status:12} {title} ({n} chunks)")
+        finally:
+            emb.stop()
         return 0
     if args.retitle:
         doc_id, title = int(args.retitle[0]), " ".join(args.retitle[1:]).strip()
@@ -80,8 +90,11 @@ def main(argv: list[str]) -> int:
     pi = sub.add_parser("ingest", help="add PDFs / .md / .txt files or folders to the library")
     pi.add_argument("paths", nargs="+")
     pi.add_argument("--title", help="override the detected title (single file only)")
+    pi.add_argument("--no-sections", action="store_true", help="don't attach section headings to chunks "
+                    "(ablation)")
     pl = sub.add_parser("library", help="list library documents")
     pl.add_argument("--remove", type=int, metavar="ID", help="remove a document by id")
     pl.add_argument("--retitle", nargs="+", metavar=("ID", "TITLE"), help="rename a document")
+    pl.add_argument("--rebuild", action="store_true", help="re-ingest all documents with the current pipeline")
     args = ap.parse_args(argv)
     return ingest(args) if args.cmd == "ingest" else library(args)

@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -64,11 +65,22 @@ class LlamaEmbedder:
             env["CUDA_VISIBLE_DEVICES"] = "-1"           # keep the CUDA build entirely off the GPU
         self.server = ServerProcess(cmd, port, gguf, "embed-server.log", env=env)
         self._started = False
+        self._lock = threading.Lock()
 
     def start(self) -> None:
-        if not self._started:
-            self.server.start(wait_s=180)
-            self._started = True
+        with self._lock:                         # the CLI warms it up in a background thread
+            if not self._started:
+                self.server.start(wait_s=180)
+                self._started = True
+
+    def start_in_background(self) -> None:
+        threading.Thread(target=self._warm_up, daemon=True).start()
+
+    def _warm_up(self) -> None:
+        try:
+            self.start()
+        except LLMError:
+            pass                                 # the first real search will report the problem
 
     def stop(self) -> None:
         self.server.stop()
@@ -181,26 +193,67 @@ def _first_line_title(first_page_text: str) -> str | None:
     return None
 
 
-def extract(path: Path) -> tuple[str, list[tuple[int | None, str]]]:
-    """(title, [(page_number, cleaned_text), ...]). Page is None for text notes."""
+# Numbered section headings on their own line: "3.1 Pre-training BERT", "5 Experiments", "A.2 Details".
+_PDF_HEADING = re.compile(r"^\s*((?:\d{1,2}(?:\.\d{1,2}){0,3})|(?:[A-H](?:\.\d{1,2}){1,3}))\.?\s+"
+                          r"([A-Z][^\n]{1,80}?)\s*$")
+_MD_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+
+
+def heading_of(line: str, markdown: bool = False) -> str | None:
+    """The section heading on this line, if it is one."""
+    if markdown:
+        m = _MD_HEADING.match(line)
+        return m.group(1).strip() if m else None
+    m = _PDF_HEADING.match(line)
+    if not m:
+        return None
+    name = m.group(2).strip()
+    words = name.split()
+    if (len(words) > 10 or name[-1] in ".,;:=" or "=" in name or "@" in name
+            or sum(c.isdigit() for c in name) > len(name) * 0.3):
+        return None                                   # table rows, equations, sentences, footnotes
+    return f"{m.group(1)} {name}"
+
+
+def split_sections(raw: str, section: str | None, markdown: bool = False
+                   ) -> tuple[list[tuple[str | None, str]], str | None]:
+    """Split raw page text at headings. Returns ([(section, raw_segment)], section in effect at the end).
+    The section carries over from the previous page until a new heading appears."""
+    segments: list[tuple[str | None, list[str]]] = [(section, [])]
+    for line in raw.splitlines():
+        h = heading_of(line, markdown)
+        if h:
+            section = h
+            segments.append((section, []))
+        else:
+            segments[-1][1].append(line)
+    return [(s, "\n".join(lines)) for s, lines in segments if "".join(lines).strip()], section
+
+
+def extract(path: Path) -> tuple[str, list[tuple[int | None, str | None, str]], int]:
+    """(title, [(page_number, section, cleaned_text), ...], n_pages). Page is None for text notes."""
+    segments: list[tuple[int | None, str | None, str]] = []
     if path.suffix.lower() == ".pdf":
         import logging
         from pypdf import PdfReader
         logging.getLogger("pypdf").setLevel(logging.ERROR)    # font-encoding chatter, harmless for text
         reader = PdfReader(str(path))
-        pages, first_raw = [], ""
+        first_raw, section = "", None
         for i, page in enumerate(reader.pages, 1):
             try:
-                raw = page.extract_text() or ""
+                raw = unicodedata.normalize("NFKC", page.extract_text() or "")
             except Exception:
                 raw = ""
             if i == 1:
                 first_raw = raw
-            pages.append((i, clean_text(raw)))
-        return (_pdf_title(reader) or _first_line_title(first_raw) or path.stem), pages
+            parts, section = split_sections(raw, section)
+            segments += [(i, s, clean_text(t)) for s, t in parts]
+        title = _pdf_title(reader) or _first_line_title(first_raw) or path.stem
+        return title, segments, len(reader.pages)
     text = path.read_text(encoding="utf-8", errors="replace")
     first = next((l.lstrip("# ").strip() for l in text.splitlines() if l.strip()), path.stem)
-    return first[:120], [(None, clean_text(text))]
+    parts, _ = split_sections(text, None, markdown=path.suffix.lower() == ".md")
+    return first[:120], [(None, s, clean_text(t)) for s, t in parts], 0
 
 
 # ---------------------------------------------------------------- store and search
@@ -212,12 +265,14 @@ class Hit:
     title: str
     page: int | None
     text: str
+    section: str | None = None
     score: float = 0.0                      # fused (RRF) score
     similarity: float | None = None         # dense cosine similarity, if the chunk was a dense candidate
 
     @property
     def where(self) -> str:
-        return f"{self.title}, p. {self.page}" if self.page else self.title
+        place = f"{self.title}, p. {self.page}" if self.page else self.title
+        return f"{place} ({self.section})" if self.section else place
 
 
 def fts_query(query: str) -> str | None:
@@ -244,33 +299,57 @@ class Library:
                 ord INTEGER, text TEXT, embedding BLOB);
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(text, tokenize='porter unicode61');
         """)
+        cols = {r[1] for r in self.db.execute("PRAGMA table_info(chunks)")}
+        if "section" not in cols:                       # libraries created before section headers
+            self.db.execute("ALTER TABLE chunks ADD COLUMN section TEXT")
+            self.db.commit()
         self._matrix: np.ndarray | None = None
         self._ids: np.ndarray | None = None
 
     # ----- ingestion
-    def add(self, path: Path, embedder: Embedder, title: str | None = None) -> tuple[str, int, str]:
-        """Ingest one file. Returns (status, n_chunks, title); status is 'added', 'skipped' or 'empty'."""
+    def add(self, path: Path, embedder: Embedder, title: str | None = None,
+            section_headers: bool = True) -> tuple[str, int, str]:
+        """Ingest one file. Returns (status, n_chunks, title); status is 'added', 'skipped' or 'empty'.
+
+        With `section_headers`, each chunk is indexed and embedded together with its section heading
+        ("contextual chunk headers"): a passage under "3.1 Pre-training BERT" that never repeats
+        "pre-training" can still be found by a question about BERT's pre-training tasks."""
         path = Path(path)
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         row = self.db.execute("SELECT title FROM docs WHERE sha256=?", (sha,)).fetchone()
         if row:
             return "skipped", 0, row[0]
-        auto_title, pages = extract(path)
+        auto_title, segments, n_pages = extract(path)
         title = title or auto_title
-        items = [(page, c) for page, text in pages for c in chunk_text(text)]
+        items = [(page, section if section_headers else None, c)
+                 for page, section, text in segments for c in chunk_text(text)]
         if not items:
             return "empty", 0, title
-        vectors = embedder.embed([f"{title}\n{c}" for _, c in items])
+        vectors = embedder.embed([f"{title} | {s}\n{c}" if s else f"{title}\n{c}" for _, s, c in items])
         cur = self.db.execute("INSERT INTO docs(path, sha256, title, pages, added) VALUES (?,?,?,?,?)",
-                              (str(path), sha, title, len(pages), time.strftime("%Y-%m-%d")))
+                              (str(path), sha, title, n_pages, time.strftime("%Y-%m-%d")))
         doc_id = cur.lastrowid
-        for n, ((page, text), vec) in enumerate(zip(items, vectors)):
-            c = self.db.execute("INSERT INTO chunks(doc_id, page, ord, text, embedding) VALUES (?,?,?,?,?)",
-                                (doc_id, page, n, text, vec.astype(np.float32).tobytes()))
-            self.db.execute("INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)", (c.lastrowid, text))
+        for n, ((page, section, text), vec) in enumerate(zip(items, vectors)):
+            c = self.db.execute("INSERT INTO chunks(doc_id, page, ord, text, embedding, section) "
+                                "VALUES (?,?,?,?,?,?)",
+                                (doc_id, page, n, text, vec.astype(np.float32).tobytes(), section))
+            self.db.execute("INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)",
+                            (c.lastrowid, f"{section}\n{text}" if section else text))
         self.db.commit()
         self._matrix = None
         return "added", len(items), title
+
+    def rebuild(self, embedder: Embedder, section_headers: bool = True) -> list[tuple[str, str, int]]:
+        """Re-ingest every document from its original file (keeps titles). [(title, status, chunks)]."""
+        out = []
+        for doc_id, title, _, _, _, path in self.documents():
+            if not Path(path).exists():
+                out.append((title, "missing file", 0))
+                continue
+            self.remove(doc_id)
+            status, n, _ = self.add(Path(path), embedder, title=title, section_headers=section_headers)
+            out.append((title, status, n))
+        return out
 
     def remove(self, doc_id: int) -> bool:
         ids = [r[0] for r in self.db.execute("SELECT id FROM chunks WHERE doc_id=?", (doc_id,))]
@@ -335,7 +414,7 @@ class Library:
         return [h for cid in best if (h := self.hit(cid, scores[cid], sims.get(cid)))]
 
     def hit(self, chunk_id: int, score: float = 0.0, similarity: float | None = None) -> Hit | None:
-        row = self.db.execute("""SELECT c.id, c.doc_id, d.title, c.page, c.text FROM chunks c
+        row = self.db.execute("""SELECT c.id, c.doc_id, d.title, c.page, c.text, c.section FROM chunks c
                                  JOIN docs d ON d.id = c.doc_id WHERE c.id=?""", (chunk_id,)).fetchone()
         return Hit(*row, score=score, similarity=similarity) if row else None
 
@@ -402,7 +481,7 @@ class LibrarySession:
                  {"type": "object", "properties": {}}, self.list_library),
         ]
 
-    def prefetch(self, user_text: str, k: int = 4, min_similarity: float | None = None
+    def prefetch(self, user_text: str, k: int = 5, min_similarity: float | None = None
                  ) -> tuple[list[dict], list[Hit]]:
         """Retrieval-first RAG for small models: search the library for the user's message and, if the
         best passage is relevant enough, return a synthetic search_library call + result to insert into
@@ -422,8 +501,9 @@ class LibrarySession:
         body = "\n\n".join(f"[{self._label(h)}] {h.where}\n"
                            + (h.text if len(h.text) <= MAX_PASSAGE_CHARS else h.text[:MAX_PASSAGE_CHARS] + "...")
                            for h in hits)
-        result = ("Library passages relevant to the question. Answer from these if they cover it and cite them "
-                  "inline by label, e.g. [L1]. If they do not answer the question, say so and answer normally.\n\n"
+        result = ("Passages from the student's own library (their copies of the papers; no need to look these "
+                  "up elsewhere). Answer from them if they cover the question and cite them inline by label, "
+                  "e.g. [L1]. If they do not answer it, say so and answer normally.\n\n"
                   + body)
         messages = [
             {"role": "assistant", "content": None,

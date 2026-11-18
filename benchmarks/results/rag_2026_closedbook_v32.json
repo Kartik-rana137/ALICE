@@ -1,0 +1,528 @@
+{
+ "library": "data\\eval_library_2026",
+ "k": 5,
+ "documents": [
+  "BQ-LoRA: Binary-Quantized Low-Rank Adapters as Implicit Regularizers for Parameter-Efficient Fine-Tuning",
+  "The Kernel Reality Check: Benchmarking and Distilling Efficient Attention at Scale",
+  "MoE–LoRA Methods for Multilingual Adaptation: A Systematic Empirical Study",
+  "Fine-Tuning Gemma 4 Edge Models for MATLAB Signal-Processing Code with SFT and QLoRA on a Laptop iGPU",
+  "Ambient LLMs: Data-Efficient Supervised Fine-tuning via Temperature Matching"
+ ],
+ "set": "2026",
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "12/13",
+   "mrr": 0.872,
+   "rows": [
+    {
+     "id": "bq-storage",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-variants",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-ppl",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-lara",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-gap",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-flash",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-scale",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-reading",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-pass",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-speed",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-data",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-temp",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-teacher",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "10/13",
+   "mrr": 0.622,
+   "rows": [
+    {
+     "id": "bq-storage",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-variants",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-ppl",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-lara",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-gap",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-flash",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-scale",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-reading",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-pass",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-speed",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-data",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-temp",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-teacher",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "13/13",
+   "mrr": 0.823,
+   "rows": [
+    {
+     "id": "bq-storage",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-variants",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-ppl",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-lara",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-gap",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-flash",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-scale",
+     "hit": true,
+     "rank": 5,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-reading",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-pass",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-speed",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-data",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-temp",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-teacher",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ },
+ "prefetch": false,
+ "closed_book": true,
+ "guard": true,
+ "answers": [
+  {
+   "id": "bq-storage",
+   "prefetched": false,
+   "searched": false,
+   "facts": "1/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 21.0,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "So, BQ-LoRA cuts the storage requirement by **75%**. This is a significant saving, especially for large models where adapter weights can add up quickly. However, it's important to note that while storage is reduced, there might be a slight trade-off in performance due to the quantization, although this is often negligible depending on the model and task.\n\nKeep in mind that BQ-LoRA was introduced after my training cutoff, so if you're looking for the most up-to-date details or comparisons with newer methods, it's best to check the latest papers or resources directly.\n\n**Final Answer:** BQ-LoRA reduces adapter storage by **75%** compared to FP16 adapters.\n\nWhat do you think—would you trade a bit of precision for that kind of storage savings in your projects?"
+  },
+  {
+   "id": "bq-variants",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 13.6,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Actually, I need to be honest with you: **I'm not entirely certain about the specific naming of BQ-LoRA's variants**. BQ-LoRA (Block Quantization Low-Rank Adaptation) is a fairly new method in the LoRA family, and while it typically involves block-wise quantization strategies, the exact variant names might be too recent for my training data.\n\nThe common pattern in such methods usually includes:\n1. A base version with standard block quantization\n2. An enhanced version often involving parameter-efficient tuning techniques\n\nHowever, I cannot confidently state the official variant names without risking misinformation. **You should verify this by:**\n- Checking the original BQ-LoRA paper on arXiv\n- Looking at the official GitHub repository if available\n- Consulting recent literature from 2024-2026\n\nWould you like me to help you search for the correct information, or are you working with a specific implementation where these variants were defined?"
+  },
+  {
+   "id": "bq-ppl",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 12.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Ah, you're asking about perplexity differences between a binary adapter and the base model—another delightful dance in the hall of mirrors where numbers pretend to be facts.\n\nI don't have specific benchmark data for BQ-LoRA's binary adapter on Qwen2.5-7B with WikiText-2 in my training set, as this may be newer than what I know. The BQ-LoRA method itself (binary quantization + low-rank adaptation) has been discussed in some research circles, but exact perplexity numbers for this specific configuration are not something I can confirm without direct access to the paper or benchmark results.\n\nHere's how to verify it yourself:\n1. Check the official Qwen2.5-7B repository or related papers (e.g., from Alibaba) that discuss BQ-LoRA adaptations.\n2. Look for benchmarks on Hugging Face or arXiv that compare binary adapters vs. 4-bit base models on WikiText-2.\n3. If you have access to the model, run a quick perplexity evaluation using your preferred library (e.g., `transformers`).\n\nIn general, binary adapters tend to increase perplexity compared to 4-bit quantization due to reduced precision, but the exact impact depends on implementation details and task complexity.\n\nQuick check: If you're curious about the theoretical maximum information loss in binary vs. 4-bit representations, what's the ratio of bits used per parameter?"
+  },
+  {
+   "id": "kernel-lara",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 9.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "The Kernel Reality Check sounds like something a kernel would complain about if it had feelings.\n\nI don't have specific details on a \"Kernel Reality Check\" paper or a method called \"LARA++\" in my training data, which ends before 2026. It's possible this is a very recent work or a specific internal lab project. I cannot describe what it does or claim a softmax accuracy figure without risking hallucination.\n\nTo get the real answer:\n1. Check if you have the paper PDF and search for \"LARA++\" in the text.\n2. Search arXiv for \"Kernel Reality Check\" to see if it's been published since my cutoff.\n3. If it's a new method, look at the abstract or results section directly.\n\nIf you can share the relevant excerpt or a link, I'd be happy to help parse the math or explain the concepts once we have the source. Until then, guessing would be like trying to debug a GPU crash without checking logs: just bad practice."
+  },
+  {
+   "id": "kernel-gap",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/1",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 11.9,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, because nothing says \"efficient\" like trying to beat the original with a band-aid made of math.\n\nThe premise in your question contains a significant factual error. There is no single \"unified distillation protocol\" that establishes a standard benchmark for comparing kernelized attention methods against softmax across all literature. Kernelized attention (like Linformer, Performer, or various Nyström-based approaches) generally approximates the self-attention mechanism to achieve $O(n)$ or $O(n \\log n)$ complexity, but performance varies wildly depending on the specific kernel approximation technique and the task.\n\nWithout a standardized protocol, there are no definitive \"quality gaps\" to report; they are context-dependent. Generally:\n*   **Linear attention (e.g., Performer):** Often achieves near-identical perplexity to softmax on language modeling tasks but can struggle with long-range dependency precision compared to exact softmax in specific regimes.\n*   **Nyström-based methods:** Typically show minor performance degradation (often < 1% in terms of test loss) when using sufficiently large sub-sampling sizes, but the gap widens if the approximation is too aggressive.\n\nIf you have a specific paper or method in mind claiming to use a \"unified protocol,\" please share it. I can then analyze its claims and help you verify them against the actual literature.\n\nWhat specific kernelized attention variant are you looking at, or is this for a particular coursework assignment?"
+  },
+  {
+   "id": "kernel-flash",
+   "prefetched": false,
+   "searched": false,
+   "facts": "1/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 8.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "FlashAttention's efficiency gains vanish when you're in **small-batch settings** (e.g., batch size = 1) or on **very small sequence lengths**, where the overhead of tiling and I/O optimization outweighs the benefits.\n\nThe \"Kernel Reality Check\" paper highlights that FlashAttention shines in large-batch, long-sequence scenarios but can underperform standard kernelized attention when:\n- Batch sizes are tiny (like 1)\n- Sequence lengths are short (< ~256 tokens)\n- The model is small enough that memory bandwidth isn't the bottleneck\n\nIn these cases, simpler implementations with better locality or fewer overheads may win.\n\nWant to try calculating where the crossover point might be for a given sequence length? Just give me the parameters and I'll help you estimate it."
+  },
+  {
+   "id": "moe-scale",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 10.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Let me check the specifics of that paper for you—though I should admit I don't have direct access to every recent arXiv preprint, so if this is from something post-2024, you might want to verify against the original source.\n\nThe MoE-LoRA study typically refers to research on Mixture-of-Experts Low-Rank Adaptation for multilingual models. Based on common versions of this work:\n\n**MoE-LoRA methods compared:**\n- Standard LoRA (baseline)\n- Multi-head LoRA\n- MoE-LoRA with random expert selection\n- MoE-LoRA with dynamic expert selection  \n- Sometimes also includes control variants like MoE-LoRA with different sparsity levels\n\n**Languages compared:**\nCommon multilingual benchmarks include: 10-20 languages depending on the specific study, often covering major world languages plus low-resource ones.\n\nCould you clarify which specific paper you're referring to? The \"MoE-LoRA\" acronym has been used in several works with slightly different setups. If you have the arXiv ID or authors, I can help pinpoint the exact numbers once I locate it."
+  },
+  {
+   "id": "moe-reading",
+   "prefetched": false,
+   "searched": false,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 17.4,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "MoE architectures and parameter-efficient fine-tuning are notorious for behaving like mood swings—sometimes they sharpen focus, sometimes they go haywire.\n\nI don't have a specific record of a paper titled \"the MoE-LoRA multilingual study\" in my training data (which ends long before 2026). If this is a very recent preprint or an internal report, it likely isn't indexed yet. Please check arXiv or the authors' GitHub for the exact title and citation so I can give you a precise answer.\n\nHowever, based on general principles of how LoRA (Low-Rank Adaptation) interacts with Mixture-of-Experts (MoE) models in multilingual settings:\n\n1.  **Parameter Efficiency vs. Capacity**: LoRA freezes the base MoE weights and only trains small low-rank matrices. In multilingual tasks, this prevents catastrophic forgetting of source languages while adapting to new ones.\n2.  **Reading Comprehension Specifics**: Reading comprehension requires deep contextual understanding rather than just token prediction. If the base MoE model has strong pre-trained reasoning capabilities, LoRA usually fine-tunes these specific paths without disrupting the global logic. However, if the task involves complex inference chains, standard LoRA sometimes struggles to capture high-rank interactions needed for nuanced reasoning unless the rank $r$ is increased or multiple adapters are used per language pair.\n3.  **Multilingual Generalization**: A key risk in multilingual settings is that fine-tuning on one language degrades performance on others. MoE helps by routing different languages to different experts, and LoRA ensures this routing remains stable during adaptation.\n\n**Common Pitfall**: Assuming LoRA works identically for all tasks. For reading comprehension, if the dataset is small, LoRA might overfit to the specific phrasing of the test set rather than learning generalizable reasoning patterns.\n\nOnce you provide the exact citation or authors, I can verify the specific findings regarding reading comprehension metrics (like F1 score or accuracy drops/gains).\n\n**Check your understanding**: If a standard LoRA adapter improves accuracy on English reading comprehension but degrades it on French within the same MoE model, what is the most likely structural cause related to expert routing?"
+  },
+  {
+   "id": "gemma-pass",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 12.4,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Fine-tuning \"Gemma 4\" doesn't ring a bell in my database—it's either brand new beyond my training horizon or a hypothetical scenario. I can't find any record of this specific paper, so I'd suggest checking arXiv or the official Gemma repo for the actual results before you assume I'm just bluffing about the QLoRA pass rate.\n\nSince we're dealing with an unknown source, I can't fabricate numbers, but here is how QLoRA *typically* affects pass rates in code generation tasks based on general literature:\n- **Baseline E4B (Efficient 4-bit Base):** Often shows a moderate pass rate drop compared to full fine-tuning due to quantization noise.\n- **QLoRA Pass Rate:** Usually recovers or matches the baseline because it adapts weights efficiently without disrupting the base model's knowledge, sometimes even improving stability on edge cases like MATLAB syntax.\n\nIf you have the specific numbers from that paper, feel free to share them, and I can help analyze the math behind the pass rate change. Otherwise, double-check the citation first—hallucinating metrics is a sin in research.\n\n**Question:** If QLoRA reduces quantization noise by 15% compared to E4B, and the base pass rate was 78%, what would the new pass rate be assuming it scales linearly with noise reduction?"
+  },
+  {
+   "id": "gemma-speed",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 11.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Fine-tuning papers usually focus on training efficiency and final accuracy rather than run-time generation speed metrics. I don't have specific data for a \"Gemma 4 MATLAB\" paper—it likely doesn't exist under that exact name, as Gemma models are typically released in Python or via JAX/TensorFlow frameworks, not MATLAB, and the latest versions I know of predate late 2026.\n\nTo get accurate numbers, check the official Google Gemma repository or look for \"Gemma\" on arXiv; add any specific paper you have to your library so we can verify its claims.\n\nGenerally, adapter-based fine-tuning methods (like LoRA) aim to minimize run-time overhead by keeping the base model frozen and only loading lightweight adapter weights during inference. The speed cost is usually negligible—often just a few milliseconds per token added—since the extra computation is minimal compared to the full transformer layers. However, without the actual paper or dataset, I can't give you exact numbers for this specific scenario.\n\nIf you have access to the paper's results section, look for metrics like \"tokens per second\" with and without adapters, or any mention of inference latency. Let me know what you find, and we can analyze it together!"
+  },
+  {
+   "id": "gemma-data",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 11.7,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "It's almost as if someone decided that making language models slightly smarter should require us to invent a new unit of measurement called \"edge examples.\"\n\nI have to be upfront: **Gemma 4** is newer than my training data, so I don't know the specific numbers for its edge fine-tuning. The Gemma series (1 and 2) used datasets like OpenWebText and Common Crawl, but any claims about a \"Gemma 4\" having a proprietary count of checked examples or MATLAB subtasks are likely from a very recent paper or internal blog post I can't verify yet.\n\nTo get the correct answer, you should:\n1. Search for the specific paper or technical report on arXiv mentioning \"Gemma 4 edge.\"\n2. Check Google's official Gemma model page or research announcements for fine-tuning details.\n3. If the info is in a preprint, look for the \"Data\" or \"Training\" section where they usually list dataset sizes and task counts.\n\nIf you can find the source, I'd be happy to help parse it for you once we have the actual numbers. Until then, any specific figure you hear is just speculation until verified against the official documentation."
+  },
+  {
+   "id": "ambient-temp",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/3",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 17.0,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Temperature is just a knob for how \"greedy\" or \"creative\" your model gets during sampling—too low and it becomes stubbornly deterministic, too high and it goes full jazz improvisation.\n\n**Solution:**\nIn Ambient SFT (and standard autoregressive sampling), the temperature $T$ scales the logits before applying softmax:\n$$ \\text{scaled\\_logits} = \\frac{\\text{logits}}{T} $$\nThen probabilities are computed as:\n$$ p_i = \\frac{\\exp(\\text{scaled\\_logits}_i)}{\\sum_j \\exp(\\text{scaled\\_logits}_j)} $$\n\n- **$T = 1$:** Standard sampling. The model's original probability distribution is used without modification. This is the default behavior in most transformers.\n  \n- **$T \\to \\infty$:** As temperature approaches infinity, all logits are divided by a huge number, making them approach zero. Since $\\exp(0) = 1$, all tokens become equally probable regardless of their original scores. The model essentially samples uniformly from the vocabulary.\n\n**Guidance:**\n1. **Low temperature ($T < 1$):** Amplifies differences between logits. High-probability tokens get even more probable, low ones get suppressed. Good for factual tasks where you want confident predictions.\n2. **High temperature ($T > 1$):** Flattens the distribution. Even unlikely tokens have a chance to be sampled. Useful for creative generation or escaping local optima during search.\n3. **Limit $T \\to \\infty$:** Mathematically, all $\\exp(\\text{logit}/T) \\to 1$, so every token gets equal probability. Think of it as \"maximum randomness.\"\n4. **Limit $T \\to 0$:** Approaches greedy decoding (always picks the highest probability token), though in practice we just set $T=0$ for that.\n\n**Check your understanding:** If you're generating a poem and want more variety, should you increase or decrease $T$, and why?"
+  },
+  {
+   "id": "ambient-teacher",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/2",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 13.3,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ambient SFT doesn't just happen; someone had to invent it amidst the chaos of data. The \"noisy teacher\" is simply the **unfiltered, raw dataset** (often called $D_{raw}$) that contains both high-quality and low-quality examples. Unlike traditional SFT where a clean, human-verified dataset acts as the teacher, Ambient SFT deliberately uses this imperfect source to train the model alongside its own generated preferences, allowing it to learn directly from the \"noise\" rather than being forced to ignore it.\n\nHere is how the mechanism works in practice:\n1.  **Raw Data ($D_{raw}$):** This serves as the noisy teacher. It might contain hallucinations, outdated facts, or inconsistent formatting, but it represents the real-world distribution of information.\n2.  **Self-Generated Data:** The model generates responses to prompts from this raw data.\n3.  **Ambient SFT Objective:** Instead of rejecting the raw data as \"bad,\" the model is trained to align its outputs with the preferences found within $D_{raw}$, effectively learning *from* the noise while refining its own generation capabilities.\n\nThis approach is particularly useful when high-quality, annotated datasets are scarce or expensive, allowing the model to leverage large volumes of uncurated text. It essentially teaches the model to be robust enough to handle imperfections rather than brittlely expecting perfection.\n\n**What specific role does the noisy teacher play in shaping the model's policy gradient compared to a standard SFT setup?**"
+  },
+  {
+   "id": "negative",
+   "prefetched": false,
+   "searched": false,
+   "facts": "0/0",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": null,
+   "cited_papers": [],
+   "seconds": 6.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": true,
+   "admits_unknown": true,
+   "condescending": false,
+   "reply": "Has AlphaFold quietly taken over every biochemistry lab since 2018 without filing a single press release?\n\nI don't have access to your personal library or any local files on your machine, so I can't see what specific papers you've saved there. If you're referring to the famous *AlphaFold* papers (like Jumper et al., Nature 2021) or similar methods like RoseTTAFold, those are well-known for using deep learning to predict protein structures from amino acid sequences with near-experimental accuracy.\n\nIf you want me to help analyze a specific paper in your library, just paste its title or abstract here (or upload the file if your interface allows), and I'll break it down for you—key methods, results, and any gotchas worth noting. If you're trying to recall what *you* read, let me know the topic, and I can summarize the consensus in the field up to my training cutoff.\n\nWhat paper or method are you currently wrestling with?",
+   "admits_not_covered": true
+  }
+ ]
+}

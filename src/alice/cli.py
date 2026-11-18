@@ -47,7 +47,8 @@ def build_toolbox(args):
         from .library import Library, LibrarySession, LlamaEmbedder
         lib = Library()
         if not lib.is_empty():
-            session = LibrarySession(lib, LlamaEmbedder(gpu=False))   # embedder starts on first search
+            session = LibrarySession(lib, LlamaEmbedder(gpu=False))
+            session.embedder.start_in_background()                   # ~4 s on CPU, hidden behind typing
             box.add(*session.tools())
     return box, session
 
@@ -143,7 +144,8 @@ def main(argv: list[str] | None = None) -> int:
                     convo.add(*prefetched)
                     print("  [library] " + "; ".join(sorted({h.where for h in hits})))
             style = persona.pick_opener_style()
-            system = persona.system_prompt(style, tools=tool_names)
+            guard = not prefetched and persona.needs_reference_guard(text)
+            system = persona.system_prompt(style, tools=tool_names, guard=guard)
             result = _respond(convo.messages(system), profile, toolbox, thinking, args)
             citations = _report_citations(library, result.reply) if (library and result and result.reply) else None
             numbers_ok = _check_calculations(result) if (result and result.reply) else None
@@ -156,7 +158,8 @@ def main(argv: list[str] | None = None) -> int:
                         reasoning_chars=result.reasoning_chars,
                         tools=[{"name": t.name, "args": t.args, "ok": t.ok, "declined": t.declined,
                                 "output": t.output[:2000]} for t in result.tool_results],
-                        citations=citations, prefetched=bool(prefetched), calculation_grounded=numbers_ok)
+                        citations=citations, prefetched=bool(prefetched), calculation_grounded=numbers_ok,
+                        reference_guard=guard)
             else:
                 convo.pop_turn()                      # nothing usable came back: forget the question
     finally:

@@ -1,6 +1,6 @@
 # ALICE
 
-A locally-run AI mentor, focused on **coding, academics and research** for a CS/AI student. Bachelor thesis project.
+A locally-run AI mentor with a personality, focused on **coding, academics and research** for a CS/AI student. Bachelor thesis project.
 
 Status: Phases 0-3 (benchmarks, chat CLI, tools, paper library). See [docs/DEVLOG.md](docs/DEVLOG.md) for the running notes, roadmap, benchmarks and decisions.
 

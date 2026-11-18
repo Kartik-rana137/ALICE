@@ -3,7 +3,7 @@ leaked-markup filtering, commands and the Stop key."""
 import asyncio
 import threading
 
-from textual.widgets import Input, Markdown, Static
+from textual.widgets import Markdown, Static, TextArea
 
 from alice.agent import TurnResult
 from alice.config import Profile
@@ -83,8 +83,8 @@ def test_chat_box_full_turn_with_dialog_and_notices():
         app = AliceApp(session)
         async with app.run_test(size=(120, 40)) as pilot:
             assert await _wait(pilot, lambda: app.ready)
-            assert not app.query_one("#prompt", Input).disabled
-            app.query_one("#prompt", Input).value = "What is 6*7?"
+            assert not app.query_one("#prompt", TextArea).disabled
+            app.query_one("#prompt", TextArea).text = "What is 6*7?"
             await pilot.press("enter")
             assert await _wait(pilot, lambda: isinstance(app.screen, ConfirmRun))
             await pilot.press("y")                                    # approve the code run
@@ -111,7 +111,7 @@ def test_chat_box_commands_and_declining_code():
             assert await _wait(pilot, lambda: app.ready)
             await pilot.press("ctrl+t")
             assert session.thinking and "thinking on" in str(app.query_one("#status", Static).content)
-            app.query_one("#prompt", Input).value = "run something"
+            app.query_one("#prompt", TextArea).text = "run something"
             await pilot.press("enter")
             assert await _wait(pilot, lambda: isinstance(app.screen, ConfirmRun))
             await pilot.press("n")
@@ -137,10 +137,34 @@ def test_input_stays_disabled_until_the_model_has_loaded():
         app = AliceApp(SlowStart())
         async with app.run_test(size=(100, 30)) as pilot:
             await pilot.pause(0.5)                          # well past the first paint
-            assert not app.ready and app.query_one("#prompt", Input).disabled
+            assert not app.ready and app.query_one("#prompt", TextArea).disabled
             release.set()
             assert await _wait(pilot, lambda: app.ready)
-            assert not app.query_one("#prompt", Input).disabled
+            assert not app.query_one("#prompt", TextArea).disabled
+    asyncio.run(scenario())
+
+
+def test_multiline_paste_is_sent_as_one_message():
+    async def scenario():
+        class SimpleSession(FakeSession):
+            def ask(self, text, **callbacks):
+                self.asked.append(text)
+                callbacks["on_event"](Event("content", "Received"))
+                callbacks["on_event"](Event("finish", "stop", {}))
+                return TurnOutcome(
+                    result=TurnResult(reply="Received", messages=[], finish="stop", seconds=0.1,
+                                      gen_tokens=1, timings={"predicted_per_second": 10.0})
+                )
+
+        session = SimpleSession()
+        app = AliceApp(session)
+        async with app.run_test(size=(120, 40)) as pilot:
+            assert await _wait(pilot, lambda: app.ready)
+            prompt = app.query_one("#prompt", TextArea)
+            prompt.text = "First line\nSecond line\n\nFourth line"
+            await pilot.press("enter")
+            assert await _wait(pilot, lambda: not app.busy)
+            assert session.asked == ["First line\nSecond line\n\nFourth line"]
     asyncio.run(scenario())
 
 
@@ -150,7 +174,7 @@ def test_chat_box_stop_key_interrupts_a_reply():
         app = AliceApp(session)
         async with app.run_test(size=(120, 40)) as pilot:
             assert await _wait(pilot, lambda: app.ready)
-            app.query_one("#prompt", Input).value = "long question"
+            app.query_one("#prompt", TextArea).text = "long question"
             await pilot.press("enter")
             assert await _wait(pilot, lambda: app.busy)
             await pilot.pause(0.2)

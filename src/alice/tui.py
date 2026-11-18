@@ -19,7 +19,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Footer, Header, Input, Label, Markdown, Static
+from textual.widgets import Button, Footer, Header, Label, Markdown, Static, TextArea
 
 from .cli import _short, chat_arguments, session_from_args, tool_summary, turn_stats
 from .llm import Event, LLMError
@@ -68,7 +68,7 @@ class AliceApp(App):
     .info { color: $text-muted; text-style: italic; margin: 1 0 0 0; }
     .thinking { color: $text-muted; text-style: italic; margin: 1 0 0 0; }
     #status { height: 1; padding: 0 1; background: $panel; color: $text-muted; }
-    #prompt { margin: 0 0; }
+    #prompt { height: 3; margin: 0 0; }
     ConfirmRun { align: center middle; }
     #dialog { width: 90%; max-width: 110; height: auto; max-height: 85%; padding: 1 2;
               border: thick $warning; background: $surface; }
@@ -77,6 +77,9 @@ class AliceApp(App):
     #buttons Button { margin-left: 2; }
     """
     BINDINGS = [
+        Binding("enter", "submit_prompt", "Send", priority=True),
+        Binding("ctrl+enter", "insert_prompt_newline", "New line", priority=True),
+        Binding("shift+enter", "insert_prompt_newline", "New line", priority=True),
         Binding("escape", "stop", "Stop reply"),
         Binding("ctrl+t", "toggle_thinking", "Thinking on/off"),
         Binding("ctrl+r", "new_conversation", "New conversation"),
@@ -98,7 +101,12 @@ class AliceApp(App):
         yield Header()
         yield VerticalScroll(id="log")
         yield Static("", id="status", markup=False)
-        yield Input(placeholder="Loading the model...", id="prompt", disabled=True)
+        yield TextArea("",
+                       placeholder="Loading the model...",
+                       id="prompt",
+                       disabled=True,
+                       show_line_numbers=False,
+                       soft_wrap=True)
         yield Footer()
 
     @property
@@ -173,22 +181,24 @@ class AliceApp(App):
         self.add_line(msg, "info")
         self.add_line("Enter sends · Esc stops a reply · Ctrl+T thinking · Ctrl+R new conversation · "
                       "/help for commands", "info")
-        prompt = self.query_one("#prompt", Input)
+        prompt = self.query_one("#prompt", TextArea)
         prompt.disabled = False
         prompt.placeholder = "Ask ALICE anything...  (/help for commands)"
         prompt.focus()
         self.refresh_status()
 
     # ----- input
-    @on(Input.Submitted, "#prompt")
-    def submitted(self, event: Input.Submitted) -> None:
-        text = event.value.strip()
+    def action_submit_prompt(self) -> None:
+        prompt = self.query_one("#prompt", TextArea)
+        if not prompt.has_focus:
+            return
+        text = prompt.text.strip()
         if not text or not self.ready:
             return
         if self.busy:
             self.notify("ALICE is still answering. Press Esc to stop her first.", severity="warning")
             return
-        event.input.value = ""
+        prompt.text = ""
         if text == "/clear":
             self.action_clear_screen()
             return
@@ -205,6 +215,11 @@ class AliceApp(App):
         self.cancel.clear()
         self.refresh_status()
         self.answer(text)
+
+    def action_insert_prompt_newline(self) -> None:
+        prompt = self.query_one("#prompt", TextArea)
+        if prompt.has_focus:
+            prompt.insert("\n")
 
     # ----- one turn (worker thread)
     @work(thread=True, exclusive=True, group="turn")

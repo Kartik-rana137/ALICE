@@ -1,6 +1,6 @@
 # ALICE hardware/config file. Copy to alice.toml (not committed) and edit for your machine.
 # Everything is optional: missing values fall back to the defaults in src/alice/config.py,
-# which target a small GPU (the 9B default needs ~5.6 GB VRAM at 16k context).
+# target a constrained local GPU setup.
 
 [server]
 binary = "tools/llama.cpp/llama-server"   # ".exe" is added automatically on Windows
@@ -14,11 +14,11 @@ logs = "logs"
 [chat]
 profile = "default"            # which [models.*] entry `alice` uses unless --model is given
 
-# The built-in "default" profile is Qwen3.5-9B Q4_K_M at 16k context (~5.6 GB VRAM).
+# The built-in "default" profile is Qwen3.5-9B Q4_K_M at 16k context on a constrained GPU.
 # Add or override profiles here. Keys: gguf (required), ctx, ngl, n_cpu_moe, max_tokens,
 # thinking_max_tokens, reasoning_budget, extra_args, note, logit_bias, sampling, thinking_sampling.
 
-# Example for a 24 GB+ GPU or a Mac with 48 GB+ unified memory:
+# Example for a larger GPU setup:
 # [models.big]
 # gguf = "Qwen3.8-27B-Q4_K_M.gguf"
 # ctx = 32768
@@ -26,11 +26,11 @@ profile = "default"            # which [models.*] entry `alice` uses unless --mo
 # extra_args = ["-fa", "on"]
 # note = "27B dense, all in GPU memory"
 
-# Example: a MoE model with experts in system RAM (for MoE models that don't fit in VRAM):
+# Example: a MoE model with experts partially offloaded to system RAM:
 # [models.moe]
 # gguf = "Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
 # n_cpu_moe = 36
-# note = "MoE, experts on CPU, ~14 tok/s on the dev machine"
+# note = "MoE, experts partially on CPU"
 
 [embedding]
 gguf = "Qwen3-Embedding-0.6B-Q8_0.gguf"

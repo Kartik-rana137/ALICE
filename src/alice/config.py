@@ -2,7 +2,7 @@
 
 Hardware-specific settings live in `alice.toml` at the repo root (not committed; copy
 `alice.example.toml`). Precedence: environment variables > alice.toml > the defaults below, which
-target the original development machine (a small GPU). Upgrading hardware should only ever mean
+target a constrained consumer GPU setup. Upgrading hardware should only ever mean
 editing alice.toml (bigger model, longer context, embedder on the GPU), never editing code.
 """
 from __future__ import annotations
@@ -60,7 +60,7 @@ PREFETCH_K = int(_get("library", "prefetch_k", 5))
 EMBED_MODEL = _get("embedding", "gguf", "Qwen3-Embedding-0.6B-Q8_0.gguf")
 EMBED_GGUF = MODELS_DIR / EMBED_MODEL
 EMBED_PORT = int(os.environ.get("ALICE_EMBED_PORT", _get("embedding", "port", 8091)))
-EMBED_DEVICE = _get("embedding", "device", "cpu")     # "cpu" (leaves the GPU to the chat model) or "gpu"
+EMBED_DEVICE = _get("embedding", "device", "cpu")     # "cpu" keeps embeddings beside the chat model on constrained setups
 RETRIEVE_MIN_SIM = float(os.environ.get("ALICE_RETRIEVE_MIN_SIM", _get("embedding", "retrieve_min_sim", 0.65)))
 RETRIEVE_MIN_SIM_EXPLICIT = float(_get("embedding", "retrieve_min_sim_explicit", 0.50))
 
@@ -91,7 +91,7 @@ QWEN_THINKING = Sampling(temperature=0.6, top_p=0.95, top_k=20, presence_penalty
 class Profile:
     name: str
     gguf: str                    # file name inside the models directory
-    ctx: int = 16384             # 16k + 1 slot = ~5.6 GB VRAM for the 9B; 32k needs ~5.8 GB
+    ctx: int = 16384             # 16k context target for the constrained default setup
     ngl: int = 99
     n_cpu_moe: int = 0           # MoE models: expert layers kept on the CPU
     max_tokens: int = 2048       # visible answer budget (non-thinking)

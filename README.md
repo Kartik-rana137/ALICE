@@ -17,8 +17,8 @@ Status: Phases 0-3 (benchmarks, chat CLI, tools, paper library). See [docs/DEVLO
 ## Configuration and hardware upgrades
 
 All hardware-specific settings live in `alice.toml` (not committed). Start from the example:
-`copy alice.example.toml alice.toml`. Without it, the defaults target a small GPU
-(Qwen3.5-9B at 16k context, ~5.6 GB VRAM; embedder on the CPU). To upgrade:
+`copy alice.example.toml alice.toml`. The defaults target a constrained consumer GPU setup
+(Qwen3.5-9B at 16k context, embedder on the CPU). To upgrade:
 
 1. Download the bigger model into `models/` and add a profile, e.g. `[models.big]` with `gguf`, `ctx`,
    `ngl`, `extra_args`; set `[chat] profile = "big"` (or run `alice --model big`).

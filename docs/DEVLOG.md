@@ -13,12 +13,12 @@ A locally-run conversational AI with a persona (optionally real-time voice, memo
 ### Hardware (baseline, "Gen 0")
 | Part | Spec | Implication |
 |---|---|---|
-| GPU | Entry-level consumer GPU (small VRAM) | Hard ceiling on model size; shared between LLM, STT, TTS |
-| CPU | Consumer multi-core CPU | CPU offload possible but slow |
-| RAM | Moderate system RAM | Can hold larger quantized models for CPU/hybrid inference |
+| GPU | Constrained consumer GPU | Hard ceiling on model size; shared between LLM, STT, TTS |
+| CPU | Multi-core desktop/laptop CPU | CPU offload possible but slow |
+| RAM | System memory | Can hold larger quantized models for CPU/hybrid inference |
 | OS | Windows | Prefer tools with Windows builds (llama.cpp, Ollama, faster-whisper, Piper) |
 
-Rough VRAM budget: LLM ~3.5–4.5 GB (Q4, 4–8k ctx) + STT ~0.5 GB + TTS ~0 (CPU). Tight. Anything bigger → partial CPU offload → latency hit.
+Rough VRAM budget: keep enough memory for the quantized LLM plus STT/TTS. Anything larger may require partial CPU offload and higher latency.
 
 ### What the task consists of
 A conversational AI companion like this is not one model; it is a **pipeline**:
@@ -33,8 +33,8 @@ A conversational AI companion like this is not one model; it is a **pipeline**:
 8. **Evaluation** — needed for thesis (latency, accuracy, human eval, ablations)
 
 ### Realistic scope per hardware tier
-- **Now (small GPU):** 3–8B quantized model (e.g. Qwen2.5/3 class, Llama 3.x 8B, Phi-class) via llama.cpp/Ollama. Text chat + RAG + tool use feasible. Voice feasible with small Whisper + Piper/Kokoro (CPU). Expect ~15–35 tok/s on a 7B Q4 if it fits; 14B+ via CPU offload ≈ 2–5 tok/s (too slow for voice).
-- **Upgrade tier (12–24 GB VRAM):** 14–32B coder/reasoning models, better TTS (voice cloning), fine-tuning with LoRA/QLoRA becomes realistic.
+- **Baseline GPU tier:** 3–8B quantized model (e.g. Qwen2.5/3 class, Llama 3.x 8B, Phi-class) via llama.cpp/Ollama. Text chat + RAG + tool use feasible. Voice feasible with small Whisper + Piper/Kokoro (CPU).
+- **Upgrade tier:** larger coder/reasoning models, better TTS (voice cloning), fine-tuning with LoRA/QLoRA becomes realistic.
 - **Thesis-time (4 yrs):** whatever hardware/models exist then; design the system **model-agnostic** so the LLM is a swappable component.
 
 ### Key decisions (initial, revisit freely)
@@ -60,7 +60,7 @@ A conversational AI companion like this is not one model; it is a **pipeline**:
 | 8 | Evaluation + thesis writing | Benchmarks (HumanEval-style, custom research-QA), human eval, ablations |
 
 ### Risks
-- VRAM is the bottleneck; voice + LLM concurrently may not fit → may need sequential or CPU TTS/STT.
+- Constrained VRAM is the bottleneck; voice + LLM concurrently may not fit → may need sequential or CPU TTS/STT.
 - Small models hallucinate citations/facts → RAG with grounded citations is essential, not optional.
 - Tool-calling reliability on ≤8B models.
 - Scope creep (avatar/streaming features) vs. thesis-worthy research contribution.
@@ -121,9 +121,9 @@ A conversational AI companion like this is not one model; it is a **pipeline**:
 - **Qwen3.6** (Apr 2026): 27B, 35B-A3B (MoE, ~3B active params).
 - **Qwen3.8** (Aug 2026): 27B and larger; no small dense sizes yet.
 - Third-party reports say Qwen3.5 9B/4B are strong on general/agentic tasks but weakest on coding/reasoning relative to larger models — must verify on our own prompts.
-- Interesting for this hardware: **35B-A3B MoE** keeps attention on GPU and experts in system RAM, only ~3B params active per token → may be usable speed despite 35B total size. To test.
+- Interesting for this hardware tier: **35B-A3B MoE** keeps attention on GPU and offloads experts to system RAM, with only ~3B params active per token → may offer usable speed despite 35B total size. To test.
 
-### Benchmarks (llama-bench, -ngl 99, pp512 / tg128, dev GPU)
+### Benchmarks (llama-bench, -ngl 99, pp512 / tg128)
 | Model | Quant | Size | Prompt t/s | Gen t/s | Fits fully on GPU |
 |---|---|---|---|---|---|
 | Qwen3.5-2B | Q4_K_M | 1.18 GiB | 718 | 120 | yes |
@@ -203,8 +203,8 @@ Whole 12-prompt suite wall time: 2B 74 s, E4B 113 s, 4B 123 s, 9B 240 s, 35B-A3B
 - **Small models fabricate citations.** Both Qwen3.5 2B and 4B invented details for a paper that doesn't exist; the 4B flipped between runs at the same temperature. Confirms the risk in the plan: grounded RAG with citation checking (Phase 3) is mandatory, not optional.
 - Everything >= 9B passed the honesty and shape-debug checks; the 4B-and-below tier is not reliable enough for the default.
 - Persona prompt v0 works on every model except the 2B; Gemma 4 has the most natural mentor-with-sass tone.
-- MoE models (13-15 t/s) are fine for text chat but ~2.5x slower than the 9B and use 14-18 GB of system RAM, which will compete with RAG embeddings. First request after loading is very slow (model page-in from disk: 70 s prompt eval, 168 s first reply for the 26B).
-- Qwen 9B at 8k context fits fully in VRAM at ~33 t/s; llama-bench alone would have hidden whether it fit.
+- MoE models (13-15 t/s) are fine for text chat but slower than the 9B and use substantial system RAM, which may compete with RAG embeddings. First request after loading can be very slow.
+- Qwen 9B at 8k context fits in the constrained GPU setup at ~33 t/s; llama-bench alone would have hidden whether it fit.
 
 ### Caveats (important for the thesis)
 - One run per prompt per model, 12 prompts, temperature 0.3: **noisy**. The 4B result flipping proves run-to-run variance matters. A real evaluation needs multiple seeds and a larger set.
@@ -488,7 +488,7 @@ Goal: ALICE must keep working, and get better, when the hardware is upgraded.
 ### What would have broken on an upgrade, and the fixes
 | Problem | Fix |
 |---|---|
-| Model file, context, GPU layers, ports, embedder device hard-coded in `config.py` | `alice.toml` (gitignored; `alice.example.toml` committed). Precedence: env vars > alice.toml > code defaults (= the original dev setup). New profiles via `[models.<name>]` incl. `extra_args` for server flags (e.g. flash attention); typos in keys are rejected with the list of valid keys. `[chat] profile` picks the default. |
+| Model file, context, GPU layers, ports, embedder device hard-coded in `config.py` | `alice.toml` (gitignored; `alice.example.toml` committed). Precedence: env vars > alice.toml > code defaults. New profiles via `[models.<name>]` incl. `extra_args` for server flags (e.g. flash attention); typos in keys are rejected with the list of valid keys. `[chat] profile` picks the default. |
 | Windows-only server path (`llama-server.exe`) | One config for every OS; `.exe` added on Windows only. |
 | Changing the embedding model would silently corrupt search (old and new vectors compared; crash if dimensions differ, plausible garbage if not) | The library records `embed_model` / `embed_dim` in a `meta` table. With a different configured model, search and ingest refuse with "run `alice library --rebuild`", and the chat disables the library with that message. Old libraries are adopted as built with Qwen3-Embedding-0.6B. A missing embedding model file is reported instead of silently skipping the library. |
 | Retrieval thresholds tuned to one embedder | Moved to `[embedding]`; `scripts/calibrate_retrieval.py` derives new values from related vs unrelated questions. Re-run for the current model: 0.65 (2026 set) / 0.62 (famous set) vs the configured 0.65, so the hand-calibrated value holds. The explicit-mention threshold it suggests (0.53-0.61) is higher than the 0.50 chosen from a real paraphrase (0.605); kept 0.50. |
@@ -498,7 +498,7 @@ Goal: ALICE must keep working, and get better, when the hardware is upgraded.
 - The first cache version overwrote `vectors.npy` on rebuild. A test that kept a second handle open (= a chat session running while `alice ingest` adds papers in another terminal) failed with `OSError: [Errno 22]`: Windows cannot overwrite or delete a file that is memory-mapped.
 - Fix: versioned cache files (`vectors-<hash>.npy`), written to a temp name and moved into place atomically, never overwritten; old versions are deleted once nothing maps them. The library keeps a version counter in `meta`, bumped on every add/remove/rebuild, and each search compares it (O(1)), so a running chat picks up papers ingested by another process. Regression test simulates the two processes.
 
-### How far does exact vector search go? (`scripts/scale_bench.py`, 1024-dim, the dev machine's CPU)
+### How far does exact vector search go? (`scripts/scale_bench.py`, 1024-dim)
 | Chunks (~papers) | Cache size | Search median | p95 |
 |---|---|---|---|
 | 10,000 (~100) | 0.04 GB | 1.7 ms | 1.9 ms |

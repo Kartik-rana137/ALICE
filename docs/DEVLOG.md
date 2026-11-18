@@ -223,3 +223,50 @@ Whole 12-prompt suite wall time: 2B 74 s, E4B 113 s, 4B 123 s, 9B 240 s, 35B-A3B
 - [ ] llama-server launcher + OpenAI-compatible client wrapper
 - [ ] Text chat CLI with persona prompt v1 (refine mentor + sass from the v0 results) + streaming
 - [ ] Conversation memory within a session
+
+---
+
+## 2026-11-18 — Phase 1 started; 35B heavy tier removed
+
+- **Removed Qwen3.6-35B-A3B** (17.7 GB) and its `heavy` profile (no longer used). Only **Qwen3.5-9B Q4_K_M** remains in `models/`.
+  - Supersedes the "heavy-reasoning tier" bullet in the Phase 0 decision above. The 35B remains the first thing to bring back for harder questions or the local tier of a future local->Claude router; re-download line is (commented) in `scripts/download_models.sh`, run with `--n-cpu-moe 36` (~14 t/s).
+- **Phase 1 skeleton built** (`src/alice/`, stdlib only, no runtime deps):
+  - `config.py` model profiles/paths; `llm.py` llama-server launcher (reuses a running server) + streaming SSE client; `conversation.py` session memory with context trimming; `persona.py` system prompt **v1**; `cli.py` chat REPL (`alice`, `/reset`, `/quit`).
+  - Persona v1 changes from v0 (driven by Phase 0 findings): explicit "never invent papers/authors/arXiv ids/URLs", "say when unsure", "correct wrong premises", word-count target (~250) to reduce the cut-off replies, and "drop the sass when the student is discouraged".
+  - Tests: `tests/test_alice.py` (SSE parsing, context trimming, server command building).
+
+### Phase 1 smoke test (real server, Qwen3.5-9B, persona v1)
+- End-to-end CLI works: server auto-start (~20 s load), streaming output, reply timing, clean server shutdown on exit (no stray processes), 11 unit tests passing.
+- Fake-paper prompt: correct (says it doesn't recognise the paper, asks for a link/arXiv id, no fabrication). 8.9 s.
+- Homework prompt ("just give me the full code"): the first v1 wording was too permissive and the model pasted the full solution. Tightened persona (explicit "homework without an attempt -> skeleton/pseudocode + a question, no full solution"). Retest: tone and task-setting are right, **but the "skeleton" still leaks the whole solution with hint comments** — a known limitation of the 9B at following "leave blanks". Idea for later: post-check / second pass, or evaluate on a larger model after a hardware upgrade.
+- Persona is a style/behaviour layer that needs a proper eval later (mentor vs plain answering is a candidate thesis question), not endless prompt tweaking now.
+
+### Phase 1 TODO
+- [x] Python skeleton, launcher, client, CLI, conversation memory, tests
+- [ ] Use `/tokenize` for exact context accounting (currently a conservative chars/3 estimate)
+- [ ] Save/load conversation transcripts (useful for thesis data and later memory)
+- [ ] Decide Phase 1 "done" bar, then move to Phase 2 (tools: code sandbox, file reader, search)
+
+---
+
+## 2026-11-18 — Persona v2: solution first, then step-by-step guidance
+
+- **Decision:** ALICE always gives the complete, correct solution up front (homework included), then walks through it step by step (what each part does and why, pitfalls), then ends with one check-your-understanding question or variation. Concept questions are explained directly. No more skeletons or withheld answers.
+- **Supersedes:** the v1 "homework -> skeleton/hints" rule and the Phase 0 reading of "refuses to paste code" as the *good* persona behaviour. Honesty rules (no invented citations, admit uncertainty, correct wrong premises) and the ~250-word conciseness target are unchanged.
+- **Why:** seeing the full answer first and learning from it works better than being gated; this also avoids the 9B's inability to write a skeleton without leaking the solution (see Phase 1 smoke test).
+- **Smoke test (9B, `persona v2`):** binary search -> code, 5-step walkthrough, follow-up question about unsorted input. Bayes problem -> derivation, walkthrough, follow-up with prevalence 1/100. Format followed on both.
+- **Issues seen:**
+  - Arithmetic inconsistency: headline said "~1.96%" while its own derivation gave 0.01943 (1.94%). Small models slip on numeric answers -> tool use (code sandbox, Phase 2) should do calculations.
+  - Sass was barely present in these two replies (tone reads neutral). Not changed yet; revisit if it matters.
+  - The check question for binary search ("time complexity if not sorted?") is a bit vague as a learning prompt.
+- **Thesis note:** "solution-first + guided walkthrough" vs. "hint-first (Socratic)" is a concrete, testable pedagogy comparison for the evaluation phase.
+
+---
+
+## 2026-11-18 — Persona v2.1: sass restored
+
+- **Decision:** bring the sass back, present but not over the top.
+- **Rule in the prompt:** open every reply with one short, dry, playful remark, then go straight to content; optional second quip near the end, never more; tease the situation not the student's ability; no scolding/lecturing, pet names, emojis or roleplay; no jokes inside code, derivations or numbered steps; drop the sass and be kind when the student is discouraged.
+- **Iteration:** the first attempt (v2.1a, "a touch of wit, in the opening line or closing question") gave sass in 2/3 test replies (none on the L1-vs-L2 concept question) and a contradictory scold ("I can't just dump code on you" followed by the code). Making the opener mandatory and banning "can't" scolding fixed it: 3/3 replies had a short opener.
+- **Known weakness:** openers are formulaic ("Another day, another ..." appeared in 2 of 3 replies). Small-model style; accept for now, revisit with a larger model or sampling changes.
+- Persona tuning is deliberately stopped here; a real pedagogy/tone evaluation belongs to the evaluation phase.

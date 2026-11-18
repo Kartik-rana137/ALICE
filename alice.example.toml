@@ -41,6 +41,12 @@ device = "cpu"                 # "gpu" once there is VRAM to spare next to the c
 retrieve_min_sim = 0.65
 retrieve_min_sim_explicit = 0.50
 
+[arxiv]
+# When a question names a paper or method that isn't in your library, search arXiv for that name
+# before answering. Off by default because it sends the name (not your whole question) to arxiv.org.
+# Toggle per session with --auto-arxiv or /arxiv auto on|off.
+auto_lookup = false
+
 [library]
 dir = "data/library"
 prefetch_k = 5                 # passages inserted per question (more = better recall, slower prompts)

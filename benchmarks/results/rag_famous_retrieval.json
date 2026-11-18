@@ -142,6 +142,72 @@
     }
    ]
   },
+  "hybrid-noscope": {
+   "hit_at_k": "10/10",
+   "mrr": 0.795,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": true,
+     "rank": 5,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
   "hybrid": {
    "hit_at_k": "10/10",
    "mrr": 0.795,

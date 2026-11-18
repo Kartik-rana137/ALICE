@@ -65,6 +65,11 @@ RETRIEVE_MIN_SIM = float(os.environ.get("ALICE_RETRIEVE_MIN_SIM", _get("embeddin
 RETRIEVE_MIN_SIM_EXPLICIT = float(_get("embedding", "retrieve_min_sim_explicit", 0.50))
 
 
+# Automatic arXiv lookup when a question names work that isn't in the library. Off by default: it sends a
+# search phrase (the paper/method name) to arxiv.org without being asked each time.
+ARXIV_AUTO = str(os.environ.get("ALICE_ARXIV_AUTO", _get("arxiv", "auto_lookup", False))).lower() in ("1", "true", "yes", "on")
+
+
 @dataclass(frozen=True)
 class Sampling:
     temperature: float

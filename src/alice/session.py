@@ -7,6 +7,8 @@ callbacks while a reply streams and a TurnOutcome with user-facing notices after
 """
 from __future__ import annotations
 
+import json
+import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,9 +21,52 @@ from .llm import Event, LLMError, LlamaServer, count_tokens
 from .tools import Tool, ToolBox, ToolResult, calc, default_toolbox
 from .transcript import Transcript
 
+# Claims of having searched or run something. Deliberately excludes "checked"/"verified", which models
+# also use for mental work ("I checked the formula").
+CLAIMED_TOOL_USE = re.compile(
+    r"\bI(?:'ve| have| just|'ve just)?\s+(?:also\s+)?(?:searched|looked (?:it |this |that )?up|queried|ran|executed|tested)\b"
+    r"|\bmy (?:search|searches|lookup)\b|\b(?:arxiv|library|web) search(?:es)?(?: results?)?\b|\bsearch results?\b",
+    re.I)
+
 HELP = ("Commands: /think on|off  step-by-step reasoning (slower, better at maths/logic)\n"
+        "          /arxiv auto on|off  look up named papers/methods on arXiv automatically\n"
         "          /tools        list available tools\n"
         "          /reset  clear the conversation   /help   /quit")
+
+# Full abstracts (arXiv caps them at ~1,920 characters) for the top 2: with 3 results cut at 1,200
+# characters, the answer to "BQ-LoRA's WikiText-2 perplexity" was in the part that got cut off.
+ARXIV_AUTO_RESULTS = 2
+ARXIV_AUTO_SUMMARY_CHARS = 2000
+
+
+def arxiv_lookup_query(text: str) -> str | None:
+    """What to send to arXiv for a question: the paper/method it names, never the whole question.
+    "the Gemma 4 MATLAB fine-tuning paper" -> the longest such phrase; "BQ-LoRA variants" -> "BQ-LoRA"."""
+    from .library import paper_references
+    refs = [p for p, _ in paper_references(text)]
+    if refs:
+        return max(refs, key=len)
+    terms = persona.named_terms(text)
+    return " ".join(terms[:3]) or None
+
+
+def arxiv_prefetch(text: str) -> tuple[list[dict], str | None]:
+    """Search arXiv for the work a question names and return a synthetic arxiv_search call + result to
+    insert into the turn (like library prefetch). Measured on 2026 papers the model could not know: with
+    the reference guard alone it searched arXiv for 8/13 questions; the rest were answered from nothing."""
+    from .tools import arxiv
+    query = arxiv_lookup_query(text)
+    if not query:
+        return [], None
+    result = arxiv.search(query, max_results=ARXIV_AUTO_RESULTS, summary_chars=ARXIV_AUTO_SUMMARY_CHARS)
+    call_id = "auto_arxiv_1"
+    note = ("arXiv search results for the paper or method the student asked about. If one of them is the "
+            "work in question, answer from its abstract and cite its arXiv id. If none matches, say you "
+            "could not find it.\n\n")
+    return [{"role": "assistant", "content": None,
+             "tool_calls": [{"id": call_id, "type": "function",
+                             "function": {"name": "arxiv_search", "arguments": json.dumps({"query": query})}}]},
+            {"role": "tool", "tool_call_id": call_id, "content": note + result}], query
 
 
 @dataclass
@@ -79,9 +124,11 @@ class StreamFilter:
 
 class ChatSession:
     def __init__(self, profile: config.Profile, workspace: str | None = ".", tools: bool = True,
-                 offline: bool = False, transcript: bool = True, thinking: bool = False):
+                 offline: bool = False, transcript: bool = True, thinking: bool = False,
+                 auto_arxiv: bool | None = None):
         self.profile = profile
         self.thinking = thinking
+        self.auto_arxiv = config.ARXIV_AUTO if auto_arxiv is None else auto_arxiv
         self.startup_notes: list[str] = []
         self._library_size: int | None = None
         self.toolbox: ToolBox | None = None
@@ -163,6 +210,16 @@ class ChatSession:
             if self.transcript:
                 self.transcript.event("reset")
             return CommandResult("(conversation cleared)", reset=True)
+        if text.startswith("/arxiv"):
+            arg = text.split()[2:] if text.split()[1:2] == ["auto"] else []
+            if "arxiv_search" not in self.tool_names:
+                return CommandResult("(arXiv tools are off: started with --offline or --no-tools)")
+            if arg:
+                self.auto_arxiv = arg[0].lower() in ("on", "1", "true", "yes")
+                if self.transcript:
+                    self.transcript.event("auto_arxiv", on=self.auto_arxiv)
+            return CommandResult(f"(automatic arXiv lookup {'on' if self.auto_arxiv else 'off'}"
+                                 + ("; named papers/methods are sent to arxiv.org)" if self.auto_arxiv else ")"))
         if text.startswith("/think"):
             arg = text.split()[1:] or ["on" if not self.thinking else "off"]
             self.thinking = arg[0].lower() in ("on", "1", "true", "yes")
@@ -177,6 +234,7 @@ class ChatSession:
             on_tool: Callable[[ToolResult], None] | None = None,
             confirm: Callable[[Tool, dict], bool] | None = None,
             on_library: Callable[[list[str]], None] | None = None,
+            on_arxiv: Callable[[str], None] | None = None,
             cancel: threading.Event | None = None) -> TurnOutcome:
         convo = self.convo
         if convo is None:
@@ -184,15 +242,22 @@ class ChatSession:
         convo.add_user(text)
         if self.transcript:
             self.transcript.user(text)
-        prefetched = []
+        prefetched, hits = [], []
         if self.library:
             prefetched, hits = self.library.prefetch(text)
             if prefetched:
                 convo.add(*prefetched)
                 if on_library:
                     on_library(sorted({h.where for h in hits}))
-        style = persona.pick_opener_style()
         guard = not prefetched and persona.needs_reference_guard(text)
+        arxiv_query = None
+        if guard and self.auto_arxiv and "arxiv_search" in self.tool_names:
+            if on_arxiv and (q := arxiv_lookup_query(text)):
+                on_arxiv(q)                              # show what is sent before sending it
+            looked_up, arxiv_query = arxiv_prefetch(text)
+            if looked_up:
+                convo.add(*looked_up)
+        style = persona.pick_opener_style()
         system = persona.system_prompt(style, tools=self.tool_names, guard=guard)
         out = TurnOutcome()
         try:
@@ -211,8 +276,9 @@ class ChatSession:
             return out
 
         result = out.result
-        citations = self._check_citations(result.reply, out.notices) if self.library else None
+        citations = self._check_citations(result.reply, out.notices, hits) if self.library else None
         numbers_ok = self._check_calculations(result, out.notices)
+        fake_tool_claim = self._check_claimed_tools(result, bool(prefetched or arxiv_query), out.notices)
         if result.finish == "length":
             out.notices.append(Notice("info", "(reply hit the length limit and was cut off; type 'continue' "
                                               "for the rest)"))
@@ -225,13 +291,18 @@ class ChatSession:
                 tools=[{"name": t.name, "args": t.args, "ok": t.ok, "declined": t.declined,
                         "output": t.output[:2000]} for t in result.tool_results],
                 citations=citations, prefetched=bool(prefetched), calculation_grounded=numbers_ok,
-                reference_guard=guard)
+                reference_guard=guard, claimed_tool_use_without_tools=fake_tool_claim, auto_arxiv_query=arxiv_query)
         return out
 
-    def _check_citations(self, reply: str, notices: list[Notice]) -> dict:
+    def _check_citations(self, reply: str, notices: list[Notice], prefetched_hits=()) -> dict:
         rep = self.library.check(reply)
         if rep.cited:
             notices.append(Notice("sources", "Sources: " + "; ".join(f"[{l}] {h.where}" for l, h in rep.cited)))
+        elif prefetched_hits:
+            # The 9B sometimes answers from the passages without citing them (or copies the paper's own
+            # reference numbers, e.g. "Adam [20]"). Still show where the information came from.
+            notices.append(Notice("sources", "Retrieved from your library (not cited inline): "
+                                  + "; ".join(sorted({h.where for h in prefetched_hits}))))
         if rep.unknown:
             notices.append(Notice("warning", f"WARNING: cites {', '.join('[' + l + ']' for l in rep.unknown)} "
                                              "which were never retrieved from your library. Treat those claims "
@@ -242,6 +313,21 @@ class ChatSession:
                                   + ". They may come from the model's memory, not your papers."))
         return {"cited": [{"label": l, "doc": h.title, "page": h.page, "chunk": h.chunk_id} for l, h in rep.cited],
                 "unknown": rep.unknown, "unsupported": [list(u) for u in rep.unsupported]}
+
+    @staticmethod
+    def _check_claimed_tools(result: TurnResult, prefetched: bool, notices: list[Notice]) -> bool:
+        """Warn when the reply claims a search / code run that never happened this turn.
+
+        Survey of 120 eval replies: 3 claimed tool use; 2 were fabricated ("I've searched for this ...",
+        "... doesn't appear in arXiv search results" with no tool call), 1 was genuine. Returns True if flagged."""
+        if result.tool_results or prefetched:
+            return False
+        m = CLAIMED_TOOL_USE.search(result.reply)
+        if not m:
+            return False
+        notices.append(Notice("warning", f'WARNING: ALICE says "{m.group(0)}", but no search or tool was used in '
+                                         "this answer. Treat that part as unverified."))
+        return True
 
     @staticmethod
     def _check_calculations(result: TurnResult, notices: list[Notice]) -> bool | None:

@@ -92,10 +92,23 @@ OPENER_STYLES = [
 # note is added at the end of the system prompt.
 _WORK_WORDS = re.compile(r"\b(paper|papers|study|studies|article|preprint|arxiv|according to|authors?|et al|"
                          r"proposed|introduced)\b", re.I)
-_NAMED = re.compile(r"\b[\w+-]*[A-Z][\w+-]*[A-Z][\w+-]*\+*|\b[A-Z][a-z]+ \d+(\.\d+)?\b")   # LoRA, BQ-LoRA, Gemma 4
+# LoRA, BQ-LoRA, Gemma 4, and mid-sentence "Ambient SFT" (a capitalised word before an acronym; not at the
+# start of a sentence, so "Explain SGD ..." doesn't count)
+_NAMED = re.compile(r"(?<=[a-z,]\s)[A-Z][a-z]+\s+[A-Z]{2,}[\w+-]*"
+                    r"|\b[\w+-]*[A-Z][\w+-]*[A-Z][\w+-]*\+*|\b[A-Z][a-z]+ \d+(\.\d+)?\b")
 _COMMON = set("""CPU GPU RAM ROM API SQL HTTP HTTPS TCP UDP OS CS AI ML DL NLP CNN RNN LSTM GAN MLP SGD ReLU
 JSON XML HTML CSS URL PDF USB IDE CLI GUI CUDA PyTorch NumPy GitHub LaTeX DFS BFS DP OOP MSE RMSE ROC AUC
 TF IDF KNN SVM PCA DNS SSH VRAM II III IV""".split())
+
+
+def named_terms(text: str) -> list[str]:
+    """Specific names in a message that the model may not know: "BQ-LoRA", "LARA++", "Gemma 4"."""
+    out = []
+    for m in _NAMED.finditer(text):
+        term = m.group(0).strip()
+        if term.strip("+-") not in _COMMON and term not in out:
+            out.append(term)
+    return out
 
 
 def needs_reference_guard(text: str) -> bool:

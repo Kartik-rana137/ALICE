@@ -41,7 +41,7 @@ class FakeSession:
             return CommandResult(f"(thinking {'on' if self.thinking else 'off'})")
         return CommandResult("(conversation cleared)", reset=True) if text == "/reset" else CommandResult("help text")
 
-    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, cancel):
+    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, cancel, on_arxiv=None):
         self.asked.append(text)
         if self.block is not None:                       # simulate a long reply until Stop is pressed
             on_event(Event("content", "Thinking about it"))

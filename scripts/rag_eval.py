@@ -22,6 +22,7 @@ import time
 from alice import config, persona
 from alice.agent import run_turn
 from alice.library import Library, LibrarySession, LlamaEmbedder
+from alice.session import arxiv_prefetch
 from alice.llm import LlamaServer
 from alice.tools import ToolBox, arxiv, calc
 
@@ -113,12 +114,12 @@ def doc_arxiv_ids(library: Library) -> dict[int, str]:
 def retrieval_eval(library: Library, emb, k: int, questions: list) -> dict:
     ids = doc_arxiv_ids(library)
     out = {}
-    for mode in ("keyword", "dense", "hybrid"):
+    for mode in ("keyword", "dense", "hybrid-noscope", "hybrid"):    # only "hybrid" uses paper scoping
         rows = []
         for qid, paper, q, evidence, _ in questions:
             if paper is None:
                 continue
-            hits = library.search(q, emb, k=k, mode=mode)
+            hits = library.search(q, emb, k=k, mode=mode.removesuffix("-noscope"), scope=mode == "hybrid")
             ranks = [i for i, h in enumerate(hits, 1)
                      if ids.get(h.doc_id) == paper and re.search(evidence, h.text, re.I)]
             rows.append({"id": qid, "hit": bool(ranks), "rank": ranks[0] if ranks else None,
@@ -142,7 +143,7 @@ CONDESCENDING = re.compile(
 
 
 def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, closed_book: bool = False,
-                guard: bool = True, with_arxiv: bool = False) -> list[dict]:
+                guard: bool = True, with_arxiv: bool = False, auto_arxiv: bool = False) -> list[dict]:
     """closed_book: the model alone (calculator only, no library) - what it knows without RAG."""
     ids = doc_arxiv_ids(library)
     profile = config.PROFILES["default"]
@@ -157,6 +158,8 @@ def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, c
             t0 = time.time()
             pre, _ = session.prefetch(q) if (prefetch and not closed_book) else ([], [])
             use_guard = guard and not pre and persona.needs_reference_guard(q)          # same rule as the CLI
+            looked_up, arxiv_query = (arxiv_prefetch(q) if (auto_arxiv and with_arxiv and use_guard) else ([], None))
+            pre = pre + looked_up
             system = persona.system_prompt(persona.pick_opener_style(), tools=list(box.tools), guard=use_guard)
             res = run_turn([{"role": "system", "content": system}, {"role": "user", "content": q}, *pre],
                            profile, box)
@@ -168,7 +171,8 @@ def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, c
                    "all_facts": all(facts), "n_cited": len(rep.cited), "unknown_labels": rep.unknown,
                    "cited_right_paper": (paper in cited_papers) if paper else None,
                    "cited_papers": sorted(p for p in cited_papers if p), "seconds": round(time.time() - t0, 1),
-                   "rounds": res.rounds, "tools": [t.name for t in res.tool_results], "guard": use_guard,
+                   "rounds": res.rounds, "tools": [t.name for t in res.tool_results] + (["auto_arxiv"] if arxiv_query else []),
+                   "guard": use_guard, "auto_arxiv_query": arxiv_query,
                    "admits_unknown": bool(ADMITS_UNKNOWN.search(res.reply)),
                    "condescending": bool(CONDESCENDING.search(res.reply)), "reply": res.reply}
             if paper is None:                         # negative: should admit the library doesn't cover it
@@ -194,6 +198,7 @@ def main() -> int:
     ap.add_argument("--set", choices=sorted(QUESTION_SETS), default="famous", help="question set")
     ap.add_argument("--no-guard", action="store_true", help="disable the unverified-reference guard (ablation)")
     ap.add_argument("--arxiv", action="store_true", help="give the model the arXiv tools (sends questions to arxiv.org)")
+    ap.add_argument("--auto-arxiv", action="store_true", help="with --arxiv: automatic lookup when the guard fires")
     ap.add_argument("--tag", default="", help="suffix for the output file name")
     a = ap.parse_args()
     questions = QUESTION_SETS[a.set]
@@ -213,7 +218,7 @@ def main() -> int:
             results["guard"] = not a.no_guard
             results["answers"] = answer_eval(library, emb, questions, prefetch=not a.no_prefetch,
                                              closed_book=a.closed_book, guard=not a.no_guard,
-                                             with_arxiv=a.arxiv)
+                                             with_arxiv=a.arxiv, auto_arxiv=a.auto_arxiv)
             results["arxiv"] = a.arxiv
             ans = [r for r in results["answers"] if r["id"] != "negative"]
             neg = [r for r in results["answers"] if r["id"] == "negative"]

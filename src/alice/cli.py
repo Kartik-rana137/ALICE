@@ -49,12 +49,15 @@ def chat_arguments(prog: str = "alice") -> argparse.ArgumentParser:
     ap.add_argument("--no-tools", action="store_true", help="disable all tools")
     ap.add_argument("--offline", action="store_true", help="disable tools that use the internet (arXiv)")
     ap.add_argument("--no-transcript", action="store_true", help="don't save this session to logs/transcripts")
+    ap.add_argument("--auto-arxiv", action="store_true", default=None,
+                    help="look up named papers/methods on arXiv automatically (sends the name to arxiv.org)")
     return ap
 
 
 def session_from_args(args) -> ChatSession:
     return ChatSession(config.PROFILES[args.model], workspace=args.workspace, tools=not args.no_tools,
-                       offline=args.offline, transcript=not args.no_transcript, thinking=args.think)
+                       offline=args.offline, transcript=not args.no_transcript, thinking=args.think,
+                       auto_arxiv=args.auto_arxiv)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -196,7 +199,8 @@ def _respond(session: ChatSession, text: str, args) -> TurnOutcome:
     printer = _Printer(args.show_thinking, prompt="alice> ")
     outcome = session.ask(text, on_event=printer.event, on_tool=printer.tool_done,
                           on_tool_start=printer.tool_start, confirm=_confirm,
-                          on_library=lambda places: print("  [library] " + "; ".join(places)))
+                          on_library=lambda places: print("  [library] " + "; ".join(places)),
+                          on_arxiv=lambda q: print(f"  [arxiv] searching for '{q}' (sent to arxiv.org)"))
     printer.begin()
     if outcome.error:
         printer.newline()

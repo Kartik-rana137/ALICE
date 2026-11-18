@@ -108,6 +108,19 @@ class VectorIndex:
         self._ensure()
         return len(self._ids)
 
+    def score(self, query: np.ndarray, ids: list[int]) -> np.ndarray:
+        """Cosine similarity of `query` to specific chunks (used to search within one paper)."""
+        self._ensure()
+        ids_arr = np.asarray(ids, dtype=np.int64)
+        if len(ids_arr) == 0:
+            return np.zeros(0, dtype=np.float32)
+        rows = np.searchsorted(self._ids, ids_arr)          # _ids is sorted (built ORDER BY id)
+        q = np.asarray(query, dtype=np.float32)
+        if q.shape[0] != self._vecs.shape[1]:
+            raise ValueError(f"query has {q.shape[0]} dims but the library has {self._vecs.shape[1]}: the "
+                             "embedding model changed; run `alice library --rebuild`")
+        return np.asarray(self._vecs[rows], dtype=np.float32) @ q
+
     def search(self, query: np.ndarray, n: int) -> list[tuple[int, float]]:
         """[(chunk_id, cosine similarity)] best first. `query` must be unit length."""
         self._ensure()

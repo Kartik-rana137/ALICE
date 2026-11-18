@@ -84,7 +84,7 @@ def query_strategies(query: str) -> list[tuple[str, str]]:
     return out
 
 
-def search(query: str, max_results: int = 5, sort: str = "relevance") -> str:
+def search(query: str, max_results: int = 5, sort: str = "relevance", summary_chars: int = 500) -> str:
     max_results = max(1, min(int(max_results), 10))
     sort_by = {"relevance": "relevance", "newest": "submittedDate"}.get(sort, "relevance")
     strategies = query_strategies(query)
@@ -94,7 +94,7 @@ def search(query: str, max_results: int = 5, sort: str = "relevance") -> str:
     for search_query, label in strategies:
         try:
             papers = parse_feed(_fetch({"search_query": search_query, "start": 0, "max_results": max_results,
-                                        "sortBy": sort_by, "sortOrder": "descending"}))
+                                        "sortBy": sort_by, "sortOrder": "descending"}), summary_chars)
         except OSError as e:
             return f"error: arXiv request failed ({e})"
         if papers:

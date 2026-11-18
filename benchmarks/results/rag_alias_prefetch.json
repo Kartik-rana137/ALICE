@@ -1,0 +1,304 @@
+{
+ "library": "data\\eval_library",
+ "k": 5,
+ "documents": [
+  "Adam: A Method for Stochastic Optimization",
+  "Deep Residual Learning for Image Recognition",
+  "Attention Is All You Need",
+  "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+  "LoRA: Low-Rank Adaptation of Large Language Models"
+ ],
+ "set": "alias",
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "4/6",
+   "mrr": 0.583,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "5/6",
+   "mrr": 0.556,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid-noscope": {
+   "hit_at_k": "4/6",
+   "mrr": 0.583,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "6/6",
+   "mrr": 0.792,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ },
+ "prefetch": true,
+ "closed_book": false,
+ "guard": true,
+ "answers": [
+  {
+   "id": "alias-tf-opt",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 24.0,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, another time someone stumbled over a detail that’s right there in Section 5.3 of the paper. Here are the optimizer settings from *Attention Is All You Need*:\n\n- **Optimizer**: Adam [20]  \n- **β₁ = 0.9**  \n- **β₂ = 0.98**  \n- **ε = 1e-9**  \n- **Learning rate schedule**:  \n  \\[\n  \\text{lrate} = d_{\\text{model}}^{-0.5} \\cdot \\min(\\text{step\\_num}^{-0.5}, \\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5})\n  \\]  \n  This means the learning rate increases linearly for the first `warmup_steps` (set to 4000) and then decreases as the inverse square root of the step number.\n\nThe learning rate scaling factor is \\(d_{\\text{model}}^{-0.5}\\), where \\(d_{\\text{model}}\\) is the model dimension (e.g., 512 for the base model).  \n\nCheck: What would the learning rate be at step 4000 if \\(d_{\\text{model}} = 512\\)?"
+  },
+  {
+   "id": "alias-tf-dropout",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 20.5,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, the infamous Transformer paper—where everything’s a hyperparameter and nothing’s ever *just* right.\n\nThe base model in the original “Attention Is All You Need” paper used a dropout rate of **P_drop = 0.1** (i.e., 10%) for both the sums of embeddings + positional encodings, as stated on page 8 under Section 5.4 [L1]. This was applied consistently across encoder and decoder stacks.\n\nQuick note: While the big model also used P_drop = 0.1 in machine translation tasks (page 9) [L3], some other experiments or variations might have tested different rates—but for the canonical base model, it’s 0.1.\n\n**Check your understanding:** If you were to increase dropout from 0.1 to 0.3 on the same architecture and dataset, what would you most likely observe in training loss vs. validation performance? (Hint: think about overfitting.)"
+  },
+  {
+   "id": "alias-tf-hw",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 23.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, another classic \"how long did it take\" question—let's see if we can find the exact answer before anyone else does.\n\nAccording to the Transformer paper [L1], the big model was trained on **one machine with 8 NVIDIA P100 GPUs**. Each training step took about **1.0 second**, and the total training time was **300,000 steps**, which amounted to **3.5 days**.\n\nFor comparison, the base models used the same hardware but had a faster step time of 0.4 seconds and were trained for only 100,000 steps (12 hours). The big model's longer training time reflects its larger capacity and more complex architecture.\n\n---\n\n**Check your understanding**: If you were to train a model with the same number of steps as the big Transformer (300,000) but on 4 P100 GPUs instead of 8, assuming the step time doubles due to reduced parallelism, how many days would training take?"
+  },
+  {
+   "id": "alias-resnet-lr",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 26.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "ResNet used a classic step decay schedule, not some exotic cosine annealing or linear warmup (though they did use a tiny initial warmup for the 110-layer variant). Here’s what the paper says:\n\n- Training framework: SGD with momentum = 0.9 and weight decay = 0.0001, batch size = 256 [L2].\n- Learning rate starts at **0.1**.\n- The LR is **divided by 10 whenever the training error plateaus** (i.e., stops improving) [L2].\n- Training runs for up to **60 × 10⁴ iterations** (600k) [L2].\n\nFor the 110-layer network, they tried an initial LR of 0.1 but found it a bit too aggressive at the start, so they used **0.01 for warmup until training error dropped below ~80% (≈400 iterations)**, then switched back to 0.1 and continued with the same step-decay schedule [L1].\n\nSo the core ImageNet ResNet schedule is:\n- Start LR = 0.1\n- Step decay by factor 10 on error plateau\n- Max iterations = 600k\n\nQuick check-your-understanding: If you observed no improvement for 50k iterations after the first decay, what would be the next LR value?"
+  },
+  {
+   "id": "alias-resnet-cifar",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 23.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The ResNet paper trained a **1202-layer** network on CIFAR-10 (they set n = 200 in their stacking scheme). They also mention exploring models with “over 1000 layers” and report results for this 1202-layer model, which achieved training error < 0.1% but test error of 7.93%.\n\nHere’s the breakdown:\n- The network uses a stack of **6n layers** with 3×3 convolutions across three feature-map sizes.\n- Setting **n = 200** gives 6 × 200 = **1200**, but the paper calls it a **1202-layer** network (likely due to additional fixed layers like pooling or normalization).\n\nSo, the deepest CIFAR-10 model in the original ResNet paper was **1202 layers**.\n\nWhat depth did they use for their ImageNet experiments?"
+  },
+  {
+   "id": "alias-resnet-shortcut",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 26.2,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Alright, so you're wondering how ResNet handles dimension mismatches in its shortcuts. The paper actually lays this out pretty clearly—they consider two main options when dimensions increase (like when expanding channels or spatial size): identity mapping with zero-padding and projection shortcuts via 1×1 convolutions.\n\nHere’s the breakdown:\n- **Option A (Zero-Padding)**: The shortcut performs an identity mapping but pads zeros to match the larger dimensions. This adds no extra parameters [L2][L3].\n- **Option B (Projection Shortcuts)**: Uses 1×1 convolutions in the shortcut to project the input to the target dimension, introducing some learnable parameters [L2][L3].\n\nThe authors tested both and found that projection shortcuts (Option B) were slightly better than zero-padding (Option A), but not by much. They concluded that identity shortcuts (even with zero-padding) are sufficient for solving the degradation problem, so they stuck with Option A to keep things simple and efficient [L1].\n\nIn practice, this means most ResNet variants use identity shortcuts when dimensions match and either zero-padded or projected shortcuts when they don’t, depending on the specific architecture.\n\nQuick check: If you were building a residual block where the output has twice as many channels as the input, what would be the simplest way to make the shortcut work without adding extra parameters?"
+  }
+ ],
+ "arxiv": false
+}

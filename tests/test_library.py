@@ -205,3 +205,35 @@ def test_citations_in_parentheses_are_recognised(lib):
     s.search_library("attention heads", k=1)
     rep = s.check("From your copy of the paper (L1), there are eight heads.")
     assert [l for l, _ in rep.cited] == ["L1"] and rep.unknown == []
+
+
+def test_paper_references_and_scoped_search(tmp_path):
+    """'the Transformer paper' style nicknames: shortest phrase first, scoped search inside that paper."""
+    from alice.library import paper_references
+    phrases = [p for p, _ in paper_references("How deep was the deepest network the ResNet paper trained?")]
+    assert phrases[0] == "ResNet"
+    assert [p for p, _ in paper_references('What does "Attention Is All You Need" propose?')][0] == \
+        "Attention Is All You Need"
+    assert paper_references("How does a hash table work?") == []
+
+    # Realistic shape: the paper behind the nickname uses it throughout, others mention it now and then.
+    (tmp_path / "attn.md").write_text(
+        "# Attention Is All You Need\n\n## Model\n\nThe Transformer uses stacked self-attention layers.\n\n"
+        "## Encoder\n\nThe Transformer encoder has six identical layers.\n\n"
+        "## Results\n\nThe Transformer beats recurrent models on translation.\n\n"
+        "## Optimizer\n\nWe used Adam with beta2 0.98 and a warmup of 4000 steps.\n", encoding="utf-8")
+    (tmp_path / "bert.md").write_text(
+        "# BERT\n\n## Model\n\nBERT is a bidirectional Transformer encoder.\n\n## Pre-training\n\nWe mask "
+        "fifteen percent of the input tokens at random.\n\n## Data\n\nWe use BooksCorpus and English Wikipedia "
+        "text.\n\n## Optimizer\n\nWe used Adam with a learning rate of 1e-4 and the usual optimizer settings.\n",
+        encoding="utf-8")
+    lib = Library(tmp_path / "lib")
+    emb = FakeEmbedder()
+    lib.add(tmp_path / "attn.md", emb)
+    lib.add(tmp_path / "bert.md", emb)
+    scope = lib.resolve_reference("Which optimizer settings did the Transformer paper use?")
+    assert scope and scope.title == "Attention Is All You Need" and scope.how == "density"
+    assert scope.rest == "Which optimizer settings did use?"
+    hits, sc = lib.search_with_scope("Which optimizer settings did the Transformer paper use?", emb, k=3)
+    assert sc and all(h.title == "Attention Is All You Need" for h in hits)
+    assert lib.resolve_reference("What is a Transformer?") is None              # no paper named: global

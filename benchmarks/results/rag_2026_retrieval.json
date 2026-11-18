@@ -178,7 +178,7 @@
     }
    ]
   },
-  "hybrid": {
+  "hybrid-noscope": {
    "hit_at_k": "13/13",
    "mrr": 0.823,
    "rows": [
@@ -234,6 +234,90 @@
      "id": "gemma-pass",
      "hit": true,
      "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-speed",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-data",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-temp",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "ambient-teacher",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "13/13",
+   "mrr": 0.872,
+   "rows": [
+    {
+     "id": "bq-storage",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-variants",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bq-ppl",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-lara",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-gap",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "kernel-flash",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-scale",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "moe-reading",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "gemma-pass",
+     "hit": true,
+     "rank": 3,
      "right_paper_in_topk": true
     },
     {

@@ -286,6 +286,65 @@ class Hit:
         return f"{place} ({self.section})" if self.section else place
 
 
+# "restrict": search only the named paper; "boost": also fuse in the global search. Measured 2026-11-18:
+# restrict found 29/29 evidence passages (alias 6/6), boost 28/29 (it missed "the Transformer paper's
+# optimizer settings", the case scoping exists for); mean MRR tied at 0.79.
+SCOPE_MODE = os.environ.get("ALICE_SCOPE_MODE", "restrict")
+SCOPE_MIN_RATIO = 1.5      # "Transformer": Attention paper 0.31 of chunks vs LoRA 0.20 (1.6x); "LoRA" in a
+SCOPE_MIN_CHUNKS = 2       # library of two LoRA papers: 1.0x -> ambiguous, not scoped (correct)
+
+_QUOTED = re.compile(r"[\"“]([^\"”]{4,120})[\"”]")                                             # "quoted title"
+_PAPER_WORD = re.compile(r"\b(?:paper|study|article|preprint)\b", re.I)                         # the X paper
+_PAPER_ON = re.compile(r"\b(?:paper|study|article|preprint)\s+(?:on|about|called|titled|named)\s+(.{3,90}?)"
+                       r"(?=\s*[,?;:]|\s*$|\s+(?:how|what|which|did|does|is|was|were|use|uses|used|report|reports)\b)",
+                       re.I)                                                                    # the paper on X, ...
+_IN_X = re.compile(r"^\s*(?:in|for|according to)\s+([A-Z][\w+\-.’' ]{1,60}?),", re.I)          # In Ambient SFT, ...
+_DETERMINER = {"the", "this", "that", "a", "an", "your", "my"}
+
+
+@dataclass
+class PaperScope:
+    doc_id: int
+    title: str
+    phrase: str          # how the question referred to the paper
+    rest: str            # the question without that reference
+    how: str             # "title" or "density"
+
+
+def paper_references(query: str) -> list[tuple[str, tuple[int, int]]]:
+    """Candidate paper references in a question: (phrase, span to remove), in the order to try.
+
+    For "... the X Y Z paper" the candidates run from the nearest word outwards ("Z", "Y Z", "X Y Z"),
+    stopping at the determiner, so "the deepest network the ResNet paper" yields "ResNet" rather than
+    "deepest network the ResNet"; resolve_reference() takes the first candidate that identifies a paper."""
+    out = [(m.group(1).strip(), m.span()) for m in _QUOTED.finditer(query)]
+    for m in _PAPER_WORD.finditer(query):
+        words = list(re.finditer(r"[\w+\-.'’]+", query[:m.start()]))
+        stop = next((i for i in range(len(words) - 1, -1, -1) if words[i].group(0).lower() in _DETERMINER), None)
+        if stop is None:
+            continue
+        name = words[stop + 1:][-7:]
+        for n in range(1, len(name) + 1):
+            part = name[-n:]
+            out.append((" ".join(w.group(0) for w in part), (words[stop].start(), m.end())))
+    out += [(_bare_name(m.group(1)), m.span()) for m in _PAPER_ON.finditer(query)]
+    out += [(_bare_name(m.group(1)), m.span()) for m in _IN_X.finditer(query)]
+    return [(p, s) for p, s in out if p]
+
+
+def _bare_name(phrase: str) -> str:
+    """'the Kernel Reality Check paper' -> 'Kernel Reality Check'."""
+    phrase = re.sub(r"^(?:the|this|that|a|an)\s+", "", phrase.strip(), flags=re.I)
+    return re.sub(r"\s+(?:paper|study|article|preprint)$", "", phrase, flags=re.I).strip()
+
+
+def _strip_span(query: str, span: tuple[int, int]) -> str:
+    rest = query[:span[0]] + " " + query[span[1]:]
+    rest = re.sub(r"^\s*(?:in|according to|for)(?:\s+the)?\s*,\s*", "", rest, flags=re.I)   # "In , what ..."
+    rest = re.sub(r"\b(?:in|of|from|by)\s+(?:the\s+)?,", ",", rest, flags=re.I)
+    return re.sub(r"\s+", " ", rest).strip(" ,")
+
+
 def fts_query(query: str) -> str | None:
     words = [w for w in re.findall(r"[\w]+", query.lower()) if w not in STOPWORDS and len(w) > 1]
     return " OR ".join(f'"{w}"' for w in dict.fromkeys(words)) or None
@@ -437,42 +496,95 @@ class Library:
         return self.db.execute("SELECT 1 FROM docs LIMIT 1").fetchone() is None
 
     # ----- search
-    def dense_ranking(self, query: str, embedder: Embedder, n: int = CANDIDATES) -> list[tuple[int, float]]:
-        """[(chunk_id, cosine similarity)] best first."""
+    def dense_ranking(self, query: str, embedder: Embedder, n: int = CANDIDATES,
+                      doc_id: int | None = None) -> list[tuple[int, float]]:
+        """[(chunk_id, cosine similarity)] best first; optionally only within one document."""
         self._check_compatible()
         if len(self.index) == 0:
             return []
         q = embedder.embed([query], query=True)[0]
         try:
-            return self.index.search(q, n)
+            if doc_id is None:
+                return self.index.search(q, n)
+            ids = [r[0] for r in self.db.execute("SELECT id FROM chunks WHERE doc_id=? ORDER BY id", (doc_id,))]
+            sims = self.index.score(q, ids)
+            return [(ids[i], float(sims[i])) for i in np.argsort(-sims)[:n]]
         except ValueError as e:                          # dimension mismatch: different embedding model
             raise LibraryError(str(e)) from None
 
-    def keyword_ranking(self, query: str, n: int = CANDIDATES) -> list[int]:
+    def keyword_ranking(self, query: str, n: int = CANDIDATES, doc_id: int | None = None) -> list[int]:
         q = fts_query(query)
         if not q:
             return []
         try:
-            rows = self.db.execute("SELECT rowid FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) "
-                                   "LIMIT ?", (q, n)).fetchall()
+            if doc_id is None:
+                rows = self.db.execute("SELECT rowid FROM chunks_fts WHERE chunks_fts MATCH ? "
+                                       "ORDER BY bm25(chunks_fts) LIMIT ?", (q, n)).fetchall()
+            else:
+                rows = self.db.execute("SELECT f.rowid FROM chunks_fts f JOIN chunks c ON c.id = f.rowid "
+                                       "WHERE chunks_fts MATCH ? AND c.doc_id = ? ORDER BY bm25(chunks_fts) LIMIT ?",
+                                       (q, doc_id, n)).fetchall()
         except sqlite3.OperationalError:
             return []
         return [r[0] for r in rows]
 
-    def search(self, query: str, embedder: Embedder, k: int = 5, mode: str = "hybrid") -> list[Hit]:
-        """mode: hybrid (dense + keyword fused with RRF; the default), dense, or keyword.
-        (Document routing was tried 2026-11-18 and reverted: it did not fix nickname questions and lowered
-        MRR on both eval sets; see DEVLOG.)"""
+    # ----- "the X paper": scope the search to the paper the question names
+    def resolve_reference(self, query: str) -> PaperScope | None:
+        """Which document does the question name ("the Transformer paper", "the paper on X", a quoted
+        title, "In Ambient SFT, ...")? Title match first, else the document where the phrase is clearly
+        densest (>= SCOPE_MIN_RATIO x the runner-up). None when nothing is named or it's ambiguous."""
+        docs = self.db.execute("SELECT d.id, d.title, COUNT(c.id) FROM docs d JOIN chunks c ON c.doc_id = d.id "
+                               "GROUP BY d.id").fetchall()
+        if len(docs) < 1:
+            return None
+        for phrase, span in paper_references(query):
+            words = [w for w in re.findall(r"[\w]+", phrase.lower()) if w not in STOPWORDS and len(w) > 1]
+            if not words:
+                continue
+            in_title = [d for d in docs if all(w in re.findall(r"[\w]+", d[1].lower()) for w in words)]
+            if len(in_title) == 1:
+                return PaperScope(in_title[0][0], in_title[0][1], phrase, _strip_span(query, span), "title")
+            try:
+                counts = dict(self.db.execute(
+                    "SELECT c.doc_id, COUNT(*) FROM chunks_fts f JOIN chunks c ON c.id = f.rowid "
+                    "WHERE chunks_fts MATCH ? GROUP BY c.doc_id", (" ".join(f'"{w}"' for w in words),)).fetchall())
+            except sqlite3.OperationalError:
+                continue
+            dens = sorted(((counts.get(i, 0) / n, i, t) for i, t, n in docs if n), reverse=True)
+            if not dens or counts.get(dens[0][1], 0) < SCOPE_MIN_CHUNKS:
+                continue
+            second = dens[1][0] if len(dens) > 1 else 0.0
+            if second == 0 or dens[0][0] / second >= SCOPE_MIN_RATIO:
+                return PaperScope(dens[0][1], dens[0][2], phrase, _strip_span(query, span), "density")
+        return None
+
+    def search_with_scope(self, query: str, embedder: Embedder, k: int = 5, mode: str = "hybrid",
+                          scope: bool = True) -> tuple[list[Hit], PaperScope | None]:
+        """mode: hybrid (dense + keyword fused with RRF; the default), dense, or keyword. With `scope`, a
+        question that names one paper is searched within that paper, using the question minus the
+        reference (dense search otherwise gets pulled toward every passage that mentions the nickname)."""
+        target = self.resolve_reference(query) if scope else None
         rankings, sims = [], {}
-        if mode in ("hybrid", "dense"):
-            dense = self.dense_ranking(query, embedder)
-            sims = dict(dense)
-            rankings.append([cid for cid, _ in dense])
-        if mode in ("hybrid", "keyword"):
-            rankings.append(self.keyword_ranking(query))
+        # Global rankings for the full question, plus (if a paper was named) rankings inside that paper for
+        # the question without the reference. SCOPE_MODE "restrict" uses only the latter; "boost" fuses both.
+        plans = [(query, None)] if (not target or SCOPE_MODE == "boost") else []
+        if target:
+            plans.append((target.rest or query, target.doc_id))
+        for q, doc_id in plans:
+            if mode in ("hybrid", "dense"):
+                dense = self.dense_ranking(q, embedder, doc_id=doc_id)
+                for cid, s in dense:
+                    sims[cid] = max(s, sims.get(cid, s))
+                rankings.append([cid for cid, _ in dense])
+            if mode in ("hybrid", "keyword"):
+                rankings.append(self.keyword_ranking(q, doc_id=doc_id))
         scores = rrf([r for r in rankings if r])
         best = sorted(scores, key=scores.get, reverse=True)[:k]
-        return [h for cid in best if (h := self.hit(cid, scores[cid], sims.get(cid)))]
+        return [h for cid in best if (h := self.hit(cid, scores[cid], sims.get(cid)))], target
+
+    def search(self, query: str, embedder: Embedder, k: int = 5, mode: str = "hybrid",
+               scope: bool = True) -> list[Hit]:
+        return self.search_with_scope(query, embedder, k, mode, scope)[0]
 
     def hit(self, chunk_id: int, score: float = 0.0, similarity: float | None = None) -> Hit | None:
         row = self.db.execute("""SELECT c.id, c.doc_id, d.title, c.page, c.text, c.section FROM chunks c
@@ -583,11 +695,12 @@ class LibrarySession:
             min_similarity = (AUTO_RETRIEVE_MIN_SIM_EXPLICIT if REFERS_TO_LIBRARY.search(user_text)
                               else AUTO_RETRIEVE_MIN_SIM)
         try:
-            hits = self.library.search(user_text, self.embedder, k=k)
+            hits, scope = self.library.search_with_scope(user_text, self.embedder, k=k)
         except (LLMError, LibraryError):
             return [], []
         best = max((h.similarity for h in hits if h.similarity is not None), default=0.0)
-        if not hits or best < min_similarity:
+        # A question that names a paper in the library is about the library, whatever the similarity.
+        if not hits or (scope is None and best < min_similarity):
             return [], []
         call_id = f"prefetch_{len(self.labels) + 1}"
         body = "\n\n".join(f"[{self._label(h)}] {h.where}\n"

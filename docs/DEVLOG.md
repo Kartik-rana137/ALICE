@@ -551,3 +551,48 @@ New: a full-screen chat box, `alice tui` (same options as `alice`).
 
 ### Tone decision (2026-11-18)
 - Teasing the student is fine. The occasional opener like "...before you try to calculate it in your head and embarrass yourself" is accepted, not a bug. The persona rules stay as they are (they still prevent insults, pet names and scolding), but tone drift toward teasing is no longer a target for further tuning or evaluation.
+
+---
+
+## 2026-11-18 — Round 3: fabricated tool claims, nickname retrieval, automatic arXiv lookup
+
+### 1. Fabricated tool use is now flagged
+- Survey of all 120 saved eval replies: 3 claim to have searched or run something. 2 were fabricated ("I've searched for this specific metric ...", "... doesn't appear in ... arXiv search results", both with **no tool call**), 1 was genuine (search_library had run).
+- Check: if a reply claims a search/lookup/run ("I searched", "I ran", "my search", "arXiv search results", ...) but no tool and no library/arXiv prefetch happened this turn, the user gets "WARNING: ALICE says "...", but no search or tool was used in this answer." Loose words like "checked"/"verified" are excluded (models use them for mental work). On the survey: 2/2 fabricated caught, 0 false alarms. Unit tests include the two real cases.
+
+### 2. Nickname retrieval ("the Transformer paper", "the ResNet paper"): paper-scoped search
+- Recap: the paper's title doesn't contain the nickname; document routing was tried earlier and reverted.
+- **Which paper is meant?** Candidate phrases from "the X paper/study", "the paper on X", quoted titles, "In X, ...". For "the X Y Z paper" the candidates run from the nearest word outwards ("Z", "Y Z", ...) to the determiner, so "the deepest network the ResNet paper" gives "ResNet" (the first version grabbed "deepest network the ResNet" and failed). A candidate resolves if its words are in exactly one title, or if it is >= 1.5x denser (share of chunks mentioning it) in one paper than in any other. Measured densities: ResNet 44x, BERT 11x, Adam 13x, Transformer 1.6x (tightest); "LoRA" in a library of two LoRA papers 1.0x -> correctly not scoped. On all 29 eval questions, every resolution was the right paper.
+- **Search** within that paper with the question minus the reference ("Which optimizer settings did use?"). A resolved reference also makes automatic retrieval fire without the similarity threshold (the question is about the library by construction).
+- Design choice measured, not guessed: **restrict** (only the named paper) vs **boost** (fuse with the global search):
+
+| | alias (6) | famous (10) | 2026 (13) | found | mean MRR |
+|---|---|---|---|---|---|
+| no scoping | 4/6, 0.58 | 10/10, 0.80 | 13/13, 0.82 | 27/29 | 0.76 |
+| boost | 5/6, 0.62 | 10/10, 0.80 | 13/13, 0.87 | 28/29 | 0.79 |
+| **restrict (default)** | **6/6, 0.79** | 10/10, 0.80 | 13/13, 0.79 | **29/29** | 0.79 |
+
+  Boost missed exactly the case scoping exists for (the Transformer optimizer question), so restrict is the default (`ALICE_SCOPE_MODE=boost` for experiments). Restrict lowers a few ranks inside a paper (2026: three evidence passages moved from rank 1-2 to 3-5, still in the top 5) because the question without the paper's name is more generic.
+- End to end on the nickname questions: prefetch 6/6, **all facts 6/6** (the "optimizer settings of the Transformer paper" question that produced invented settings in the live CLI test now gets beta1 0.9, beta2 0.98, eps 1e-9 and the warmup formula). 4/6 cited a label; the other two were correct but uncited (one copied the paper's own "[20]" reference number). When library passages were inserted but none is cited, ALICE now shows "Retrieved from your library (not cited inline): ...".
+
+### 3. Opt-in automatic arXiv lookup
+- When a question names work (the reference guard fires) and nothing in the library matched, ALICE searches arXiv for the **name only** (the paper phrase, or named terms like "BQ-LoRA"; never the whole question) and inserts the results like library passages. Off by default (`[arxiv] auto_lookup`, `--auto-arxiv`, `/arxiv auto on|off`); each lookup is shown ("arXiv: searching for 'BQ-LoRA' (sent to arxiv.org)").
+- First eval (2026 papers, no library, arXiv tools on): **10/13** facts correct (guard alone: 8/13, closed-book: 1/13). Snags in the queries it sent: "the Kernel Reality Check paper" (wrapper not stripped), "SFT" alone for "Ambient SFT" (names like "Ambient SFT" weren't detected), and "BQ-LoRA's WikiText-2 perplexity" answered 0/2 because the numbers were past the 1,200-character abstract cut - the model said the paper "doesn't specify", then guessed "typically 10-12".
+- Fixes: clean names ("Kernel Reality Check"), mid-sentence "Capitalised + ACRONYM" names ("Ambient SFT"; not sentence-initial, so "Explain SGD" doesn't trigger), and full abstracts (~2,000 chars) for the top 2 results instead of 1,200 chars for 3.
+- Re-run after the fixes: **12/13** facts correct, the same level as having the papers in the library (12/13 with retrieval-first RAG). Every query sent was just the name ("BQ-LoRA", "Kernel Reality Check", "Ambient SFT", "Gemma 4 MATLAB fine-tuning", ...). The one partial answer (Ambient SFT temperature, 2/3) explains the mechanism correctly; the grader's phrase regex didn't match its wording.
+
+| Setup (2026 papers, no library) | all facts |
+|---|---|
+| model alone (closed-book) | 1/13 |
+| + reference guard, arXiv tools available | 8/13 |
+| + automatic lookup, v1 | 10/13 |
+| + automatic lookup, v2 (clean names, full abstracts) | **12/13** |
+
+- Kept opt-in: on a question that names a paper the user hasn't added, it is the most effective fix measured so far, but it sends the name to an external service, so the user decides.
+
+### Tests
+113 passing (claimed-tool-use check incl. the 2 real cases, nickname extraction and scoped search, arXiv query extraction and cleanup, /arxiv command and default-off).
+
+### Next
+- [ ] Cite arXiv results as checkable labels too (e.g. [A1]) so the citation/support checks cover them, not only library passages.
+- [ ] Multiple seeds on the answer evals (single runs so far).

@@ -94,7 +94,7 @@
     }
    ]
   },
-  "hybrid": {
+  "hybrid-noscope": {
    "hit_at_k": "4/6",
    "mrr": 0.583,
    "rows": [
@@ -120,6 +120,48 @@
      "id": "alias-resnet-lr",
      "hit": false,
      "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "5/6",
+   "mrr": 0.617,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": true,
+     "rank": 5,
      "right_paper_in_topk": true
     },
     {

@@ -213,7 +213,7 @@ class AliceApp(App):
         try:
             outcome = self.session.ask(text, on_event=ui.event, on_tool_start=ui.tool_start,
                                        on_tool=ui.tool_done, confirm=self.confirm_from_thread,
-                                       on_library=ui.library, cancel=self.cancel)
+                                       on_library=ui.library, on_arxiv=ui.arxiv, cancel=self.cancel)
             ui.finish(outcome)
         except Exception as e:                            # never leave the UI stuck in "busy"
             ui._call(self.add_line, f"error: {type(e).__name__}: {e}", "warning")
@@ -288,6 +288,9 @@ class _TurnRenderer:
 
     def library(self, places: list[str]) -> None:
         self._call(self.app.add_line, "library: " + "; ".join(places), "sources")
+
+    def arxiv(self, query: str) -> None:
+        self._call(self.app.add_line, f"arXiv: searching for '{query}' (sent to arxiv.org)", "sources")
 
     def event(self, ev: Event) -> None:
         if ev.kind == "reasoning":

@@ -50,6 +50,10 @@ Both understand `/think on|off`, `/tools`, `/reset`, `/help`, `/quit`.
 
 Tools: `calculate`, `run_python` (asks before running), `list_files` / `read_file` / `search_text` (read-only, workspace only), `arxiv_search` / `arxiv_paper` (internet), and `search_library` / `list_library` when your library has documents. Answers from the library cite passages as `[L1]`, `[L2]`; ALICE lists the sources after the reply and warns about any citation that was not actually retrieved.
 
+Questions that name a paper by nickname ("the Transformer paper", "the ResNet paper") are searched within
+that paper. With `--auto-arxiv` (or `/arxiv auto on`, or `[arxiv] auto_lookup = true`), questions about
+papers/methods that aren't in your library trigger an arXiv search for the name before ALICE answers.
+
 Privacy: everything runs locally except the arXiv tools, which send the search text to arxiv.org. Sessions are saved to `logs/transcripts/` and the library to `data/library/`; both are gitignored.
 
 ## Tests and evaluations

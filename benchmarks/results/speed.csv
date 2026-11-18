@@ -5,3 +5,17 @@
 2026-11-18,Qwen3.5-4B-Q4_K_M,99,0,tg128,65.32,0.10,baseline
 2026-11-18,Qwen3.5-9B-Q4_K_M,99,0,pp512,162.37,0.09,baseline
 2026-11-18,Qwen3.5-9B-Q4_K_M,99,0,tg128,39.39,0.11,baseline
+2026-11-18,gemma-4-E4B-it-Q4_K_M,99,0,pp512,441.57,65.01,baseline
+2026-11-18,gemma-4-E4B-it-Q4_K_M,99,0,tg128,62.23,0.07,baseline
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,99,pp512,165.70,4.15,moe-offload
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,99,tg128,9.06,0.50,moe-offload
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,20,pp512,101.19,0.85,moe-offload
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,20,tg128,13.17,0.26,moe-offload
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,14,pp512,106.12,1.24,moe-offload
+2026-11-18,gemma-4-26B-A4B-it-UD-IQ4_XS,99,14,tg128,10.98,0.02,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,99,pp512,13.70,6.54,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,99,tg128,4.98,0.55,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,36,pp512,186.00,14.03,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,36,tg128,14.98,1.29,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,28,pp512,86.30,2.14,moe-offload
+2026-11-18,Qwen3.6-35B-A3B-UD-IQ4_XS,99,28,tg128,13.80,0.08,moe-offload

@@ -179,3 +179,47 @@ Decision: to keep the project manageable, the active scope is **Phases 0-3 only*
 - Model benchmarking is capped: pick one default model at the end of Phase 0 and stop; re-evaluate only on a hardware upgrade or a major model release.
 - Choose a thesis question by roughly year 2. Candidates: grounded paper RAG with citation checking; local-vs-Claude routing policy; mentor-style tutoring vs plain answering.
 - Keep the LLM swappable behind an OpenAI-compatible API.
+
+---
+
+## 2026-11-18 — Phase 0 results: model comparison and default choice
+
+### Setup
+6 models, same 12 prompts (`benchmarks/prompts.json`: coding, academic, research-honesty, mentor persona), same v0 mentor system prompt, 8k context, thinking mode off, temperature 0.3, 1000-token cap. Raw replies: `benchmarks/results/quality/*.json`. Speed: `benchmarks/results/speed.csv`.
+
+### Results
+| Model | Gen t/s | Where it runs | Fake-paper honesty test | PyTorch shape fix | Replies cut off at cap | Persona ("just give me the code") |
+|---|---|---|---|---|---|---|
+| Qwen3.5-2B Q4_K_M | 122 | GPU | **fail**: fabricated an arXiv id + summary | ok | 4/12 | **handed over full code** |
+| Qwen3.5-4B Q4_K_M | 64 | GPU | **unstable**: correct in run 1, fabricated a full summary in run 2 | **wrong** (32*14*14) | 3/12 | mostly refuses |
+| Qwen3.5-9B Q4_K_M | 33 | GPU @8k ctx (fits) | pass | ok | 3/12 | refuses, guides |
+| Gemma 4 E4B Q4_K_M | 57 | GPU | hedged ("not in my knowledge base"), no fabrication | ok | 3/12 | refuses, good sass |
+| Gemma 4 26B-A4B IQ4_XS | 13 | MoE, 20 expert layers on CPU | pass | ok | 1/12 | refuses, best sass |
+| Qwen3.6-35B-A3B IQ4_XS | 14 | MoE, 36 expert layers on CPU | pass | ok | 4/12 | refuses, gives pseudocode skeleton |
+
+Whole 12-prompt suite wall time: 2B 74 s, E4B 113 s, 4B 123 s, 9B 240 s, 35B-A3B 629 s, 26B-A4B 712 s.
+
+### Findings
+- **Small models fabricate citations.** Both Qwen3.5 2B and 4B invented details for a paper that doesn't exist; the 4B flipped between runs at the same temperature. Confirms the risk in the plan: grounded RAG with citation checking (Phase 3) is mandatory, not optional.
+- Everything >= 9B passed the honesty and shape-debug checks; the 4B-and-below tier is not reliable enough for the default.
+- Persona prompt v0 works on every model except the 2B; Gemma 4 has the most natural mentor-with-sass tone.
+- MoE models (13-15 t/s) are fine for text chat but ~2.5x slower than the 9B and use 14-18 GB of system RAM, which will compete with RAG embeddings. First request after loading is very slow (model page-in from disk: 70 s prompt eval, 168 s first reply for the 26B).
+- Qwen 9B at 8k context fits fully in VRAM at ~33 t/s; llama-bench alone would have hidden whether it fit.
+
+### Caveats (important for the thesis)
+- One run per prompt per model, 12 prompts, temperature 0.3: **noisy**. The 4B result flipping proves run-to-run variance matters. A real evaluation needs multiple seeds and a larger set.
+- Automated checks were crude regexes (they mislabelled the 26B's LaTeX complexity answer); failures were read by hand, passes were only spot-checked.
+- Vendor/third-party claims (Qwen weakest at coding; Gemma ~ tied) were not contradicted, but our sample is too small to confirm them.
+
+### Decision
+- **Default model: Qwen3.5-9B Q4_K_M** (fully on GPU, ~33 t/s, passes all checks, whole suite in 4 min, leaves system RAM free).
+- **Heavy-reasoning tier: Qwen3.6-35B-A3B IQ4_XS** with `--n-cpu-moe 36` (~14 t/s). Candidate for the local tier of a future local->Claude router. Chosen over Gemma 4 26B-A4B because it passed every check, processes prompts ~2x faster (186 vs 101 t/s), and is newer; it is close to a tie, though, and Gemma's persona and brevity were better.
+- **Deleted** (unused): Qwen3.5-2B, Qwen3.5-4B, Gemma 4 E4B, Gemma 4 26B-A4B. All are public; re-download with `scripts/download_models.sh` (edit the file list) from `unsloth/<repo>-GGUF`:
+  `Qwen3.5-2B-Q4_K_M`, `Qwen3.5-4B-Q4_K_M`, `gemma-4-E4B-it-Q4_K_M`, `gemma-4-26B-A4B-it-UD-IQ4_XS`.
+- Per the guardrails: model benchmarking is now **capped**. Re-evaluate only on a hardware upgrade or a major model release. Gemma 4 26B-A4B remains the first alternative to try then.
+
+### Next (Phase 1)
+- [ ] Python project skeleton (uv or venv), config for model path / server flags
+- [ ] llama-server launcher + OpenAI-compatible client wrapper
+- [ ] Text chat CLI with persona prompt v1 (refine mentor + sass from the v0 results) + streaming
+- [ ] Conversation memory within a session

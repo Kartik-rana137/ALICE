@@ -1,0 +1,404 @@
+{
+ "library": "data\\eval_library",
+ "k": 5,
+ "documents": [
+  "Adam: A Method for Stochastic Optimization",
+  "Deep Residual Learning for Image Recognition",
+  "Attention Is All You Need",
+  "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+  "LoRA: Low-Rank Adaptation of Large Language Models"
+ ],
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "9/10",
+   "mrr": 0.85,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "8/10",
+   "mrr": 0.7,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "9/10",
+   "mrr": 0.825,
+   "rows": [
+    {
+     "id": "tf-optim",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "tf-heads",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-tasks",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "bert-mask",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "resnet-why",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-defaults",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-savings",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "lora-matrices",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ },
+ "prefetch": true,
+ "answers": [
+  {
+   "id": "tf-optim",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 27.3,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, the original Transformer paper—still the gold standard for “boring but brilliant” architecture choices. Here’s what they used:\n\n### Optimizer\nThey used **Adam** with the following hyperparameters [L1]:\n- β₁ = 0.9\n- β₂ = 0.98\n- ε = 10⁻⁹\n\n### Learning Rate Warmup\nThe learning rate was varied according to this formula [L1]:\n```\nlrate = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5))\n```\n- This means the learning rate increases linearly for the first `warmup_steps` training steps, then decreases proportionally to the inverse square root of the step number.\n- They set **warmup_steps = 4000** [L1].\n\n### Why this?\nThe warmup schedule helps stabilize training early on by gradually increasing the learning rate, which is especially useful for large models that might otherwise diverge with a high initial LR. After warmup, the inverse square root decay ensures the LR doesn’t grow too large as training progresses.\n\n**Check your understanding:**  \nIf `d_model = 512`, what’s the peak learning rate after warmup (i.e., at step 4000)?"
+  },
+  {
+   "id": "tf-heads",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 21.4,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Don’t let the base model’s simplicity fool you—it’s still a beauty in its own right.\n\nIn the original Transformer paper “Attention Is All You Need” (Vaswani et al., 2017), the **base** model uses:\n\n- **Number of attention heads**: `h = 8`\n- **Dimension per head (`d_k`)**: `d_k = d_model / h = 512 / 8 = 64`\n\nThis is explicitly stated in Section 3.2.3 of the paper [L4]. The model’s embedding dimension (`d_model`) is 512, and it splits this into 8 parallel attention heads, each operating on a reduced dimension of 64. This design lets the model attend to different subspaces simultaneously while keeping computational costs similar to single-head attention with full dimensionality.\n\nQuick check: If you were building your own Transformer from scratch and wanted to match the base model’s configuration, what value would you set for `d_model`?"
+  },
+  {
+   "id": "bert-tasks",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1810.04805"
+   ],
+   "seconds": 21.9,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, you're diving into BERT's pre-training—classic AI/ML homework material. Let's get straight to it.\n\n**BERT's two pre-training tasks are:**\n\n1. **Masked Language Modeling (MLM)**  \n   - Randomly masks ~15% of tokens in a sentence and trains the model to predict them from context.\n   - Unlike unidirectional language models, MLM uses bidirectional context, making BERT more robust.\n\n2. **Next Sentence Prediction (NSP)**  \n   - Given two sentences, the model predicts whether the second sentence follows the first or is unrelated.\n   - Helps capture inter-sentence relationships, useful for tasks like question answering.\n\nThese tasks are detailed in the original BERT paper [L1][L3]. MLM focuses on token prediction within a sentence, while NSP captures broader sentence-level coherence [L2]. Together, they enable BERT to learn rich contextual representations from unlabeled data.\n\n**Quick check:** If you were fine-tuning BERT for sentiment analysis, which of these two pre-training tasks would be *less* directly relevant?"
+  },
+  {
+   "id": "bert-mask",
+   "prefetched": true,
+   "searched": true,
+   "facts": "3/3",
+   "all_facts": true,
+   "n_cited": 4,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1810.04805"
+   ],
+   "seconds": 25.0,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Alright, another classic BERT trivia question—let’s get this sorted before it masks your confidence.\n\n**Solution:**  \nBERT masks **15%** of all tokens in each sequence at random during pre-training. For each chosen token position:  \n- 80% of the time, it is replaced with the `[MASK]` token.  \n- 10% of the time, it is replaced with a **random token** from the vocabulary.  \n- 10% of the time, it is left **unchanged**.  \n\nThis strategy forces the model to learn not only to predict masked words but also to handle noise and maintain robustness [L1][L2].\n\n---\n\n**Why this matters (walkthrough):**  \n1. **15% masking rate**: This balances training efficiency with enough signal for learning bidirectional context without overwhelming the model.  \n2. **[MASK] token (80%)**: Teaches standard MLM prediction, but introduces a mismatch at fine-tuning since `[MASK]` isn’t used there [L4].  \n3. **Random token (10%)**: Prevents the model from overfitting to the `[MASK]` pattern and encourages learning from noisy inputs.  \n4. **Unchanged token (10%)**: Biases the model toward the true observed word, improving generalization.  \n\nThis mix is critical for BERT’s performance and robustness [L3].\n\n---\n\n**Check your understanding:**  \nIf you apply this masking strategy to a sentence with 20 tokens, how many positions will be masked in total, and how many of those will use the `[MASK]` token?"
+  },
+  {
+   "id": "resnet-depth",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 15.2,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, another time someone assumes “deepest” means “most parameters.” Spoiler: it’s about layers, not size.\n\n**Solution:**\n- Deepest ResNet on ImageNet: **152 layers** [L1].\n- Ensemble top-5 error on the ImageNet test set: **3.57%** [L1], [L3]. This ensemble won 1st place in ILSVRC 2015.\n\n**Guided walk-through:**\n1. The paper’s claim about depth comes from the line “Our 152-layer residual net is the deepest network ever presented on ImageNet” [L1]. That’s straightforward: 152 stacked residual blocks (with identity shortcuts) make up the architecture.\n2. For the ensemble, the authors combine **six models of different depth** to get the final result [L3]. The exact composition isn’t fully specified in the snippets, but at submission time it included two 152-layer models.\n3. The reported metric is **top-5 error**, meaning the fraction of images whose true label was among the model’s top 5 predictions. Lower is better; 3.57% is a big deal back then.\n\n**Check your understanding:**  \nIf you were to run just a single 152-layer ResNet (no ensemble) on the validation set, what would its top-5 error be according to [L3]?"
+  },
+  {
+   "id": "resnet-why",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 4,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 14.6,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, the classic case of \"deeper should mean better\" going out the window like a deflated balloon.\n\nThe problem that motivated residual learning is the **degradation problem**: as plain networks get deeper, their training error doesn't just stop improving—it actually gets worse [L1][L3]. Instead of benefiting from extra layers, these networks start overfitting or simply fail to learn effectively compared to shallower counterparts.\n\nHere's the breakdown:\n- Plain networks try to learn complex functions directly by stacking more layers\n- Beyond a certain depth, they struggle to optimize properly—training error increases with depth [L1]\n- This isn't vanishing gradient issues (which can be fixed with batch norm), but a fundamental optimization difficulty where deeper nets have \"exponentially low convergence rates\" [L3]\n- Residual learning solves this by reformulating layers to learn **residual functions** (what's needed to transform the input) rather than unreferenced functions directly [L2]\n\nThe key insight: instead of forcing each layer to learn a complete transformation, let it learn just the difference between the input and desired output via shortcut connections. This makes optimization much easier as depth increases [L4].\n\n**Question:** If you have a 50-layer plain network with training error 12% on validation, but a 35-layer version has 9%, what does this tell you about the degradation problem?"
+  },
+  {
+   "id": "adam-defaults",
+   "prefetched": true,
+   "searched": true,
+   "facts": "3/3",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 21.5,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, another late-night Adam optimization crisis? You're trying to figure out what values to plug in so your model doesn't explode before breakfast.  \n\nThe original Adam paper by Kingma and Ba (ICLR 2015) recommends the following default hyperparameters for stochastic optimization:  \n- **α (learning rate)** = 0.001  \n- **β₁** = 0.9  \n- **β₂** = 0.999  \n- **ε** = 1e-8  \n\nThese values were found to work well across a variety of machine learning problems tested in the paper [L2]. The authors also note that β₂ close to 1 helps with sparse gradients but introduces initialization bias, which is why the bias correction term is important [L3].  \n\nA common pitfall: some implementations use α = 0.002 instead (mentioned alongside AdaMax) [L1], but for standard Adam, stick with 0.001 unless you have a specific reason not to.  \n\nCheck your understanding: If you were training a model where gradients are very sparse, would increasing β₂ further from 0.999 help or hurt performance, and why?"
+  },
+  {
+   "id": "adam-bias",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 27.5,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Bias correction in Adam is essential because **moment estimates are initialized at zero**, causing them to be severely biased toward zero during early training steps, especially when decay rates (β₁ and β₂) are high [L2]. Without correction, the algorithm would take excessively small or erratic initial updates, undermining convergence.\n\n### The Math Behind It\nAdam maintains two exponentially decaying averages:\n- First moment (mean): `mₜ = β₁·mₜ₋₁ + (1−β₁)·gₜ`\n- Second moment (uncentered variance): `vₜ = β₂·vₜ₋₁ + (1−β₂)·g²ₜ`\n\nBoth start at `m₀ = v₀ = 0`. This creates a systematic underestimation early on. The bias-corrected estimates are:\n```\nm̂ₜ = mₜ / (1 − β₁ᵗ)  \nv̂ₜ = vₜ / (1 − β₂ᵗ)\n```\n\n### Why This Matters\n- **Early training stability**: Without correction, `mₜ` and `vₜ` are tiny when `t` is small, leading to unstable or overly conservative updates [L3].\n- **Sparse gradients**: When β₂ is small (needed for reliable second-moment estimates with sparse data), the lack of bias correction would cause massive initial steps—exactly the opposite of what you want [L3].\n\n### Example\nWith β₁ = 0.9 and t = 1:  \n`m̂₁ = m₁ / (1 − 0.9) = m₁ / 0.1 = 10·m₁`  \nThis scales up the first-moment estimate to compensate for its initial underestimation.\n\n**Final Answer:** Bias correction ensures Adam’s moment estimates reflect true gradient statistics from the start, preventing poor early updates due to initialization bias [L2][L3].\n\nWhat happens to the update magnitude if you omit the bias correction term when β₁ = 0.99 and t = 1?"
+  },
+  {
+   "id": "lora-savings",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "2106.09685"
+   ],
+   "seconds": 25.9,
+   "rounds": 1,
+   "tools": [],
+   "reply": "Ah, you're asking about the numbers that make LoRA a party trick at every efficiency summit. Let's get straight to it.\n\n**Parameter reduction:** 10,000× fewer trainable parameters [L1]. The full GPT-3 175B has ~175B parameters, but LoRA only trains a tiny fraction (e.g., r=4 on Q/V matrices).\n**GPU memory reduction:** 3× lower VRAM requirement during training [L1], dropping from 1.2TB to 350GB for GPT-3 175B [L3].\n\nHere's why:  \n1. **Trainable parameters**: Full fine-tuning trains all 175B parameters; LoRA freezes them and adds low-rank matrices (e.g., r=4 on Q/V projections). The paper states this cuts trainable params by ~10,000× [L1].  \n2. **GPU memory**: Full training needs optimizer states for all weights (~3× VRAM), while LoRA only stores optimizer states for the tiny adapter matrices. This drops VRAM from 1.2TB to 350GB [L3].  \n\nFun fact: Storing 100 adapted GPT-3 models costs ~354GB total (base model + 35MB each), versus 35TB if you stored full fine-tuned copies [L2].\n\nCheck your understanding: If you adapt a 7B model with r=8 on Q/V matrices, how many trainable parameters would you have roughly?"
+  },
+  {
+   "id": "lora-matrices",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "2106.09685"
+   ],
+   "seconds": 25.9,
+   "rounds": 1,
+   "tools": [],
+   "reply": "LoRA doesn't adapt *all* attention matrices; it's picky—only the ones that matter most for the task at hand.  \n\nIn their main experiments, LoRA adapts **Wq (query)** and **Wv (value)** weight matrices in the self-attention module of Transformer models [L2]. They explicitly freeze the MLP modules and typically don't train Wk (key) or Wo (output projection) unless specifically testing different configurations [L1], [L4].  \n\nHere's why:  \n1. **Simplicity**: Adapting just Wq and Wv reduces trainable parameters while still capturing essential task-specific patterns [L2].  \n2. **Parameter efficiency**: With a fixed parameter budget, focusing on two matrices (e.g., r=8 per layer) outperforms adapting one matrix with higher rank or all four matrices with lower rank [L4].  \n3. **Performance**: Table 5 shows that Wq+Wv adaptation achieves the best accuracy across datasets like WikiSQL and MultiNLI compared to other combinations [L4].  \n\nFor example, in GPT-3's 175B model, adapting Wq and Wv with r=8 per layer uses ~18M parameters, while adapting all four matrices would require halving the rank to r=4 to stay within the same budget [L4].  \n\n**Check your understanding**: If you adapt only Wq (not Wv) with r=8 on a single layer of GPT-3, how many trainable parameters does that add per layer?"
+  },
+  {
+   "id": "negative",
+   "prefetched": false,
+   "searched": true,
+   "facts": "0/0",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": null,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 31.6,
+   "rounds": 2,
+   "tools": [
+    "search_library"
+   ],
+   "reply": "The search results are mostly about Transformers and CNNs (ResNets), not diffusion models. None of these papers discuss diffusion specifically.\n\n**Answer:** Your library doesn't have anything on diffusion models for image generation. The closest thing is a mention in [L1] that the Transformer authors \"plan to extend\" to images, but that's just a future plan from 2017, not a diffusion model.\n\nYou might want to look at:\n- \"Denoising Diffusion Probabilistic Models\" (Ho et al., 2020)\n- \"High-Resolution Image Synthesis with Latent Diffusion Models\" (Rombach et al., 2021)\n\nWant me to help you find these? Or maybe you actually have them and the search query needs tweaking?",
+   "admits_not_covered": true
+  }
+ ]
+}

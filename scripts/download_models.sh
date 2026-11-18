@@ -8,6 +8,7 @@ get() { # repo file
     "https://huggingface.co/$1/resolve/main/$2" && echo "ok $2" || echo "FAILED $2"
 }
 get unsloth/Qwen3.5-9B-GGUF Qwen3.5-9B-Q4_K_M.gguf          # default model (5.7 GB)
+get Qwen/Qwen3-Embedding-0.6B-GGUF Qwen3-Embedding-0.6B-Q8_0.gguf   # embeddings for the paper library (0.6 GB)
 
 # Benchmarked in Phase 0 and removed; uncomment to bring one back (see docs/DEVLOG.md):
 # get unsloth/Qwen3.6-35B-A3B-GGUF       Qwen3.6-35B-A3B-UD-IQ4_XS.gguf      # 17.7 GB, run with --n-cpu-moe 36

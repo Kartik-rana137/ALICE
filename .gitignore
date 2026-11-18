@@ -1,8 +1,9 @@
-tools/
-models/
+/tools/
+/models/
 *.gguf
 __pycache__/
 .venv/
 benchmarks/results/server.log
-logs/
+/logs/
 *.egg-info/
+/data/

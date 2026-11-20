@@ -22,6 +22,7 @@ from . import claude, config, memory, persona
 from .agent import STUCK_REPLY, TurnResult, run_turn
 from .conversation import Conversation, turns_text
 from .llm import Event, LLMError, LlamaServer, count_tokens, prime_prefix, warm_up
+from .render import ascii_emoji
 from .tools import Tool, ToolBox, ToolResult, calc, default_toolbox
 from .transcript import Transcript
 
@@ -516,6 +517,13 @@ class ChatSession:
             return out
 
         result = out.result
+        ascii_reply = ascii_emoji(result.reply)          # history only ever shows her ASCII emoticons
+        if ascii_reply != result.reply:
+            for m in reversed(result.messages):
+                if m["role"] == "assistant" and m.get("content") == result.reply:
+                    m["content"] = ascii_reply
+                    break
+            result.reply = ascii_reply
         citations = self._check_citations(result.reply, out.notices, hits) if self.library else None
         numbers_ok = self._check_calculations(result, out.notices)
         fake_tool_claim = self._check_claimed_tools(result, bool(prefetched or arxiv_query), out.notices)

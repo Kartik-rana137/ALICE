@@ -50,6 +50,31 @@ def _sub(body: str) -> str:
     return b.translate(_SUB) if b and all(c in "0123456789+-=()" for c in b) else f"_{b}"
 
 
+# ALICE uses old-school ASCII emoticons, not emoji. The persona asks for that; this catches what slips through.
+EMOJI_TO_ASCII = {
+    "🙂": ":)", "😊": ":)", "☺": ":)", "😀": ":D", "😃": ":D", "😄": ":D", "😁": ":D", "😆": "XD", "😂": "XD",
+    "🤣": "XD", "😉": ";)", "😜": ";P", "😛": ":P", "😝": "XP", "😅": "^_^;", "😬": ":S", "😐": ":|", "😑": "-_-",
+    "🙄": "-_-", "😒": ":/", "😕": ":/", "🤔": ":/", "😮": ":O", "😲": ":O", "😳": "O_O", "😱": "D:", "😢": ":'(",
+    "😭": "T_T", "😞": ":(", "🙁": ":(", "☹": ":(", "😠": ">:(", "😡": ">:(", "😎": "B)", "😏": ";)", "🤓": "8)",
+    "❤": "<3", "💔": "</3", "👍": "(y)", "👎": "(n)", "🤷": "¯\\_(ツ)_/¯", "🙃": "(:", "😴": "-_-zzz",
+    "✅": "", "❌": "", "✨": "", "⭐": "*", "⚡": "", "⚠": "(!)",
+}
+# Only the emoji blocks proper: arrows, ⌈ ⌉, ✓ and other symbols that technical answers use are kept.
+_EMOJI = re.compile("[\U0001F000-\U0001FAFF️‍]")
+
+
+def ascii_emoji(text: str) -> str:
+    """Replace emoji with ASCII emoticons where there is a natural one and drop the rest (outside code)."""
+    def fix(chunk: str) -> str:
+        for e, a in EMOJI_TO_ASCII.items():
+            chunk = chunk.replace(e + "️", a).replace(e, a)
+        return _EMOJI.sub("", chunk)            # (spacing left alone: streamed code indentation must survive)
+    parts = _CODE.split(text)
+    for i in range(0, len(parts), 2):
+        parts[i] = fix(parts[i])
+    return "".join(parts)
+
+
 def latex_to_text(text: str) -> str:
     """Replace $...$, $$...$$, \\(...\\) and \\[...\\] maths outside code with readable Unicode text."""
     parts = _CODE.split(text)

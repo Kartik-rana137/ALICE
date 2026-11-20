@@ -168,6 +168,8 @@ class _Printer:
                 print(self.prompt, end="", flush=True)
 
     def _out(self, text: str) -> None:
+        from .render import ascii_emoji
+        text = ascii_emoji(text)
         if text:
             self.begin()
             print(text, end="", flush=True)

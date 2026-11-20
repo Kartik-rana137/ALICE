@@ -742,3 +742,22 @@ Measured startup (model file already in the OS cache): imports 0.6 s, library 0.
 - Result: warm-up **19.1 s -> 2.1 s** (restore 0.25 s + 216 changing tokens), so ALICE answers at full speed ~10 s after starting instead of ~27 s. The first start after a persona/tool change still takes the full time (and saves the file). Snag: Qwen's template refuses to render a prompt with no user message, so the prefix is rendered with a placeholder one (after the marker, so it changes nothing).
 - The chat box now says why the first start after a reboot is slow while the model is read from disk.
 - Tests: 161 passing.
+
+---
+
+## 2026-11-20 - Dry "sassy teacher" tone, ASCII emoticons, no recycled themes (persona v3.6)
+
+Goals: old-school ASCII emoticons instead of emoji; a less excited tone, more like a sassy teacher; stop ALICE from latching onto one topic and bringing it back in every reply. New eval `scripts/tone_eval.py`: one 8-turn conversation that jumps between unrelated topics, with two planted memory notes (an exam date, a Rust project; temporary memory folder), counting emoji vs. ASCII emoticons, exclamation marks, unprompted memory mentions and off-topic words that recur in 3+ replies.
+
+| run | emoji | ASCII emoticons | "!" per reply | unprompted memory mentions | words in 3+ replies |
+|---|---|---|---|---|---|
+| before (v3.5) | 0 (seen in earlier replies) | 0 | 1.12 | 2/8 ("hey" -> the exam date, a walk -> the OS project) | generic |
+| v3.6 rules | 0 | 0 | 0.12 | 1/8 | generic |
+| + emoticon nudge in the turn note, casual note also covers memory | 0 | 2 | 0.12 | 1/8 | "notoriously" (3) |
+| + "notoriously" removed from an opener style (**shipped**) | 0 | 6 in 4 replies, all light/casual | 0.12 | 1/8 | the classic "desk" cache analogy |
+
+- **Tone:** the persona now describes a calm, dry, slightly sardonic teacher: no gushing, no "Great question!", hardly any exclamation marks; opener styles "mock-dramatic" / "playful" became "sardonic" / "dry".
+- **Repetition:** the persona's own example joke topics ("temperamental GPUs", "print-debugging", "a deadline creeping closer") were removed - they had become stock material - and a rule says not to reuse a joke, metaphor or theme already used in the conversation, nor bring up earlier topics or remembered facts unless the current message is about them. The memory section in the system prompt says the same. Where the leaks actually happened (memory folded into an "I can help with X, Y, Z" list in casual replies) the casual-message note now also says so.
+- **Emoji:** a system-prompt "now and then, an ASCII emoticon" produced none in 16 replies, so ~30% of turn notes ask for one (like the opener quips); and `render.ascii_emoji` converts any emoji that still slips through (😄 -> :D, 🤔 -> :/, others dropped; arrows, ⌈ ⌉, ✓ and code untouched) in the chat box, the line chat and the stored reply.
+- **Snag:** "notoriously" came from an opener style ("how notoriously fiddly this topic is") and turned into a verbal tic in 3 of 8 replies - a reminder that every concrete word in the prompt can become a repeated phrase.
+- No regressions on the check-question eval: casual replies with a quiz 0/12, study answers with a check question 7/8, unprompted day/time 1/18. Tests: 162 passing.

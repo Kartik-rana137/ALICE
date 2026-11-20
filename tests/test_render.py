@@ -14,6 +14,17 @@ def test_inline_maths_symbols_scripts_and_fractions():
     assert latex_to_text(r"$P(D \mid +) \le 1$") == "P(D | +) ≤ 1"
 
 
+def test_emoji_become_ascii_emoticons_but_symbols_and_code_stay():
+    from alice.render import ascii_emoji
+    assert ascii_emoji("Nice work 😄 and well done 👍") == "Nice work :D and well done (y)"
+    assert ascii_emoji("hmm 🤔️ really") == "hmm :/ really"                      # with a variation selector
+    assert ascii_emoji("party 🎉 time") == "party  time"                         # no natural emoticon: dropped
+    assert ascii_emoji("x → y, ⌈n/2⌉, done ✓") == "x → y, ⌈n/2⌉, done ✓"       # technical symbols kept
+    code = "```python\nprint('🙂')\n    return x\n```"
+    assert ascii_emoji(code) == code
+    assert ascii_emoji("    indented") == "    indented"                         # streamed code keeps its spaces
+
+
 def test_code_money_and_plain_text_are_left_alone():
     assert latex_to_text("costs $5 and $10 per run") == "costs $5 and $10 per run"
     code = "```bash\necho $HOME and $x$\n```"

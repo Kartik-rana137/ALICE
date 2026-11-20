@@ -29,7 +29,7 @@ from textual.widgets import Button, Footer, Header, Label, Markdown, Static, Tex
 
 from .cli import _short, chat_arguments, save_memory_with_messages, session_from_args, tool_summary, turn_stats
 from .llm import Event, LLMError
-from .render import latex_to_text
+from .render import ascii_emoji, latex_to_text
 from .session import StreamFilter
 from .tools import Tool, ToolResult
 
@@ -299,7 +299,7 @@ class AliceApp(App):
 
     async def set_reply(self, md: Markdown, text: str) -> None:
         follow = self._following()
-        await md.update(latex_to_text(text))          # display only; history and checks keep the original
+        await md.update(ascii_emoji(latex_to_text(text)))   # display only; history and checks keep the original
         if follow:
             self.log_view.scroll_end(animate=False)
 

@@ -211,7 +211,8 @@ class MemoryStore:
         if not facts and not sessions:
             return ""
         lines = ["What you remember about the student from earlier sessions (your own notes; they can be out "
-                 "of date and what the student says now wins; use them when relevant, don't recite them):"]
+                 "of date and what the student says now wins). Use a note only when the student's current "
+                 "message is about it; never work them into unrelated replies or small talk:"]
         lines += [f"- {n.text}" for n in facts]
         if sessions:
             lines.append("Recent sessions:")

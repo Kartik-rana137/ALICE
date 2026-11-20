@@ -79,6 +79,37 @@ def test_dates_do_not_trigger_the_unknown_paper_guard():
     assert persona.named_terms("Compare Gemma 4 with Qwen 3.5 by December 2026") == ["Gemma 4", "Qwen 3.5"]
 
 
+def test_casual_messages_are_recognised_and_study_questions_are_not():
+    casual = ["hi", "Good morning! How are you today?", "thanks, that helped a lot", "What time is it?",
+              "lol that was a good one", "Do you like music?", "ok, see you tomorrow", "I just finished my exams!",
+              "How many days until 25 December?", "What's your favourite programming language?"]
+    study = ["Can you explain what a hash table is?", "Why does gradient descent need a learning rate?",
+             "Explain what a closure is, thanks", "hi, can you help me debug this function?",
+             "How are hash maps implemented?", "What is entropy in thermodynamics?", "What is recursion?",
+             "Write a Python function that reverses a linked list."]
+    assert [q for q in casual if not persona.is_casual(q)] == []
+    assert [q for q in study if persona.is_casual(q)] == []
+
+
+def test_casual_note_rides_with_casual_messages_only(tmp_path, monkeypatch):
+    import alice.session as session_mod
+    from alice.agent import TurnResult
+    from alice.config import Profile
+    from alice.conversation import Conversation
+    s = session_mod.ChatSession(Profile("default", "fake.gguf"), workspace=str(tmp_path), tools=False,
+                                transcript=False, memory_notes=False, claude_escalation=False)
+    s.convo, s._today = Conversation("SYS", ctx=16384, reply_budget=1000), datetime.date.today()
+    seen = []
+
+    def fake_run_turn(messages, profile, toolbox, **kw):
+        seen.append(messages[-1]["content"])
+        return TurnResult(reply="ok", messages=[{"role": "assistant", "content": "ok"}], finish="stop")
+    monkeypatch.setattr(session_mod, "run_turn", fake_run_turn)
+    s.ask("thanks!")
+    s.ask("Explain how a B-tree splits a node.")
+    assert persona.CASUAL_NOTE in seen[0] and persona.CASUAL_NOTE not in seen[1]
+
+
 def test_turn_note_carries_the_local_time():
     now = datetime.datetime(2026, 11, 20, 14, 32, tzinfo=datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
     note = persona.turn_note("a pun", now=now)

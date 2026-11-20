@@ -706,3 +706,21 @@ No regression; citations and honesty slightly better (single runs, so "no worse"
 - **What is in it:** 44 AI/ML papers (optimisation and normalisation, tutorials such as matrix calculus, convolution arithmetic and PCA, vision, sequence models and Transformers, LLMs and alignment, generative models, RL, graphs, XGBoost, interpretability, safety and fairness); open textbooks for maths (Calculus 1-3, Introductory Statistics, MIT's Mathematics for Computer Science), physics (University Physics 1-3), chemistry (Chemistry 2e), biology (Biology 2e) and CS (Introduction to Computer Science, Python, Data Science); a few landmark open papers (LIGO's gravitational-wave detection, AlphaFold, neural message passing for chemistry, Tao's "What is good mathematics?"). Research papers in maths/physics/chemistry/biology are mostly far beyond a bachelor's level, so those subjects are covered by textbooks.
 - **Caught by the verification:** arXiv 1910.11333 is only the *supplementary information* of the quantum-supremacy paper, and the ATLAS Higgs paper is mostly a multi-page author list (name-only chunks would pollute search) - both dropped.
 - **Snag:** arXiv's export API currently answers multi-id queries with HTTP 429 and single ones in ~30 s; the abstract pages (`citation_title` / `citation_author` / `citation_date` meta tags) answer in ~0.2 s, so verification uses those, one request every 3 s.
+
+---
+
+## 2026-11-20 - Check-your-understanding questions only for study questions
+
+Goal: the closing check question should come with explanations, clarifications and solutions, not with casual conversation. New eval `scripts/check_question_eval.py`: 12 casual messages ("hi", "thanks", "do you like music?", "what time is it?", ...) and 8 study questions, each in a fresh conversation through the real pipeline; a reply counts if its last paragraph sets a question that tests the student (offers like "Want me to show more?" don't count - the first detector counted them, which made the casual numbers look worse than they were).
+
+| version | casual replies with a quiz | study answers with a check question | unprompted day/time mentions |
+|---|---|---|---|
+| before (v3.3) | 2/12 ("favourite language?" and "do you like music?" got quizzes) | 8/8 | 2/18 |
+| rule made conditional ("when the student is learning something ...") | 0/12 | **4/8** (replaced by offers) | 1/18 |
+| firm default for study + casual as the one exception | 2/12 (incl. a quiz on a date question) | 8/8 | 1/18 |
+| + code recognises clearly casual messages, the turn note says so | 0/12 | 8/8 | 5/18 |
+| + time note made "background only" (**shipped**, persona v3.4) | **0/12** | **8/8** | **2/18** |
+
+- Lesson: wording alone could not make the 9B separate chat from study reliably - softer wording cost half the study check questions, firmer wording let quizzes back into casual replies. A small high-precision classifier (`persona.is_casual`: greetings, thanks, goodbyes, reactions, questions about ALICE, the time or a date, and no study markers like explain/why/prove/code) adds an explicit note only to clearly casual messages; anything unclear keeps the default.
+- Side effect caught by the same eval: told to "reply naturally", casual replies started small-talking about the time from the local-time note ("Friday afternoon greetings..."). The note now says the time is background only; time questions are still answered correctly (the time, 35 days to 25 December).
+- Tests: 157 passing.

@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 import html
 import re
+import shutil
+import subprocess
 import sys
 import time
 import urllib.error
@@ -167,7 +169,23 @@ def download(url: str, dest: Path, tries: int = 3) -> bool:
             return True
         except Exception as e:                           # network hiccup: resume from where it stopped
             print(f"    download attempt {attempt} failed: {type(e).__name__}: {e}")
+            if isinstance(e, ValueError):                # got a web page instead of the PDF: retry with curl
+                part.unlink(missing_ok=True)
+                break
             time.sleep(5 * attempt)
+    # Some publishers (nature.com) answer Python's HTTP client with an HTML page but curl with the PDF.
+    curl = shutil.which("curl")
+    if curl:
+        subprocess.run([curl, "-s", "-L", "-A", USER_AGENT, "--max-time", "600", "-o", str(part), url],
+                       check=False, stdin=subprocess.DEVNULL)
+        if part.exists():
+            with open(part, "rb") as f:
+                is_pdf = f.read(5) == b"%PDF-"
+            if is_pdf:
+                part.replace(dest)
+                print("    downloaded with curl")
+                return True
+            part.unlink(missing_ok=True)
     return False
 
 

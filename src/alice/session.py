@@ -482,10 +482,12 @@ class ChatSession:
             looked_up, arxiv_query = arxiv_prefetch(text)
         style = persona.pick_opener_style()
         extra, self._pending_extra = self._pending_extra, []
+        casual = not prefetched and persona.is_casual(text)
+        notes = [*extra, persona.CASUAL_NOTE] if casual else extra       # `extra` is restored if the turn fails
         # Per-reply instructions travel with the question (and stay in the history), so the system prompt and
         # everything before this turn are byte-identical to the last request and come from the server's cache.
         convo.add_user(text + persona.turn_note(style, guard, arxiv_available="arxiv_search" in self.tool_names,
-                                                extra=extra, now=datetime.datetime.now().astimezone()))
+                                                extra=notes, now=datetime.datetime.now().astimezone()))
         convo.add(*prefetched, *looked_up)
         out = TurnOutcome(notices=self._take_pending_notices())
         try:

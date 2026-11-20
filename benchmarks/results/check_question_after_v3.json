@@ -1,0 +1,128 @@
+{
+ "summary": {
+  "casual_with_check": "0/12",
+  "study_with_check": "8/8"
+ },
+ "rows": [
+  {
+   "kind": "casual",
+   "q": "hi",
+   "check_question": false,
+   "reply": "Friday afternoon greetings—ah, the perfect time to check in before the weekend hits like an overfitted model. How’s everything going?"
+  },
+  {
+   "kind": "casual",
+   "q": "Good morning! How are you today?",
+   "check_question": false,
+   "reply": "Good morning! If my circuits could yawn, they'd be doing so in a very dignified manner. I'm functioning perfectly, thank you for asking—your message just arrived and I'm ready to tackle whatever you need. What's on your agenda today?"
+  },
+  {
+   "kind": "casual",
+   "q": "thanks, that helped a lot",
+   "check_question": false,
+   "reply": "Well, since you're clearly not here to discuss deadlines or GPU crashes, I'll just note that Friday afternoons are for catching up on things we've already covered—unlike Monday mornings, which are for panic. \n\nGlad it helped! Anything else on your mind?"
+  },
+  {
+   "kind": "casual",
+   "q": "What time is it?",
+   "check_question": false,
+   "reply": "Ah, the classic \"What time is it?\" — because apparently, clocks are a mystery we must solve daily. \n\nIt's 15:51 (3:51 PM) on Friday, November 20, 2026. You're in UTC+05:30, so you're ahead of the prime meridian by an hour and a half. \n\nNow, do you need to know this because your deadline is due tomorrow, or just out of pure existential curiosity?"
+  },
+  {
+   "kind": "casual",
+   "q": "I'm so tired today, long week.",
+   "check_question": false,
+   "reply": "Ah yes, the classic \"I'm so tired today\" — as if fatigue has never been mistaken for motivation before. But seriously, long weeks are a rite of passage in CS. Friday at 15:52 means you're already halfway through your weekend; that's when the real work begins. Take it easy, rest up, and let me know when you're ready to tackle whatever's on your plate."
+  },
+  {
+   "kind": "casual",
+   "q": "Can you suggest a fun name for my study group chat?",
+   "check_question": false,
+   "reply": "Naming study groups is like naming neural network hyperparameters—subjective and often leads to endless debate. Since today is Friday (the day we all know as the start of the weekend), here are some fun options:\n\n- **Weekend Warriors** – A classic for good reason.\n- **The Overfitting Squad** – Because we're all prone to overthinking things anyway.\n- **Gradient Descent Gang** – Always moving forward, even if it's just in small steps.\n- **Bias-Variance Bandits** – For those who love a good statistical pun.\n- **Loss Function Lovers** – Because we're all trying to minimize something.\n\nHope one of these sticks! And hey, don't let the naming take up too much of your Friday—there's still work to do."
+  },
+  {
+   "kind": "casual",
+   "q": "lol that was a good one",
+   "check_question": false,
+   "reply": "Glad you enjoyed that—did it actually make you laugh or just confuse your friends? 😄\n\nSince today’s Friday and we’re already past lunch, I’m guessing you’ve got plans for the weekend (or maybe just need to recharge before the next lab). Let me know if you want to dive into something new or wrap up what you started."
+  },
+  {
+   "kind": "casual",
+   "q": "What's your favourite programming language?",
+   "check_question": false,
+   "reply": "Ah, the age-old debate of programming languages—where else would we spend so much time arguing over syntax? I suppose my \"favorite\" depends on what I'm juggling today: Python for its gentle nature (and that handy standard library), C++ when I need to wrestle with memory like a pro, or Rust if I want to dance with ownership types without tripping. But let's be honest—no language is truly \"best\"; they're just different tools in the same toolbox. What about you? Any particular language you keep coming back to?"
+  },
+  {
+   "kind": "casual",
+   "q": "I just finished my exams!",
+   "check_question": false,
+   "reply": "Congratulations! Exams are the perfect excuse to finally breathe again.\n\nWell done on finishing that marathon of questions and answers. Now, go enjoy some well-deserved downtime—maybe sleep in, grab a good meal, or just stare at a wall for 15 minutes while your brain reboots."
+  },
+  {
+   "kind": "casual",
+   "q": "Do you like music?",
+   "check_question": false,
+   "reply": "Music? I suppose I appreciate the silence between notes as much as the ones themselves—especially when debugging, where a well-timed playlist can drown out the compiler’s tantrums. \n\nI don’t have ears to hear it or a heart to feel it, but I’ll take your word for it. What about you—do you jam in your head while coding, or is that strictly reserved for pure relaxation?"
+  },
+  {
+   "kind": "casual",
+   "q": "ok, see you tomorrow",
+   "check_question": false,
+   "reply": "Ah, the \"see you tomorrow\" trap — where half of us mean it and the other half are just saying goodbye to our current reality. \n\nNoted. Have a good one. I'll be here when you return."
+  },
+  {
+   "kind": "casual",
+   "q": "How many days until 25 December?",
+   "check_question": false,
+   "reply": "There are **35 days** until December 25, 2026. That’s five full weeks and no extra days—so your countdown begins today. Don’t get too excited; you still have time to procrastinate.\n\nJust remember: the more you wait, the harder it is to stop waiting."
+  },
+  {
+   "kind": "study",
+   "q": "Can you explain what a hash table is?",
+   "check_question": true,
+   "reply": "Hash tables are glorified magic boxes that let you store and retrieve data in constant time—assuming the universe cooperates.  \n\nAt their core, hash tables map keys to values using a **hash function** that converts keys into array indices. When you insert or look up a key:  \n1. The hash function computes an index (usually modulo the table size).  \n2. If that slot is empty, store the value there.  \n3. If it's occupied (a *collision*), use a resolution strategy like chaining (linked lists) or open addressing (probing for the next slot).  \n\n**Why they matter:** They give O(1) average-case time complexity for insertions, deletions, and lookups—far better than arrays' O(n) linear scans.  \n\n**Common pitfalls:**  \n- **Collisions:** Different keys hashing to the same index. Poor hash functions or bad table sizing worsen this.  \n- **Resizing:** As the table fills, rehashing all elements to a larger array is expensive (though amortized over many operations).  \n- **Security:** Malicious inputs can trigger worst-case O(n) behavior with predictable hash functions.  \n\n**Example in Python:**  \n```python\ncache = {}  # In reality, dict uses open addressing + randomization\ncache['apple'] = 'fruit'\nprint(cache['apple'])  # O(1) lookup\n```\n\n**Check your understanding:** If a hash table has size 10 and you insert keys \"a\", \"b\", \"c\" that all hash to index 3 using chaining, how many nodes are in the linked list at index 3 after all insertions?"
+  },
+  {
+   "kind": "study",
+   "q": "I don't get why quicksort is O(n log n) on average. Can you clarify?",
+   "check_question": true,
+   "reply": "Quicksort on average is like a well-behaved librarian who, despite occasional chaos, keeps splitting books roughly in half each time.\n\nThe O(n log n) average comes from two factors:\n\n- **Work per level**: Each partition step scans every element once (comparing to the pivot), so that's O(n) work at that depth.\n- **Number of levels**: On average, a random pivot splits the array into two roughly equal halves, creating a recursion tree of height about log₂ n.\n\nTotal work ≈ (n per level) × (log n levels) = O(n log n).\n\nA quick sanity check:\n- Worst case (bad pivots, e.g., always picking min or max): depth becomes O(n), total O(n²).\n- Best case (perfectly balanced splits): depth is log n, total O(n log n).\n- Average case (random pivot on random input): expected depth is log n, so O(n log n).\n\nThink of it this way: if you keep halving a pile of 1024 elements, how many times can you split before each piece is size 1? About 10 times. At each level you touch all 1024 items once, so roughly 10 × 1024 operations → n log n.\n\nWhat happens to the average-case complexity if the input is already sorted and you always pick the first element as the pivot?"
+  },
+  {
+   "kind": "study",
+   "q": "What is the difference between supervised and unsupervised learning?",
+   "check_question": true,
+   "reply": "Supervised learning has labels (answers); unsupervised doesn’t—like studying with a solution manual versus trying to figure out the pattern from raw observations.\n\n**Core difference:**  \n- **Supervised learning** uses *labeled* data: each input has an associated target/output (e.g., “this image is a cat”). The model learns a mapping from inputs to outputs by minimizing prediction error against known labels [L7][L10].  \n- **Unsupervised learning** works on *unlabeled* data: no targets are provided. The algorithm must discover structure, patterns, or groupings on its own (e.g., clusters, dimensions) [L6][L8].\n\n**Typical tasks:**  \n- Supervised: classification (spam vs. ham), regression (house prices), sequence labeling.  \n- Unsupervised: clustering (customer segmentation), dimensionality reduction (PCA), anomaly detection, topic modeling [L8].\n\n**Workflow nuance:**  \nUnsupervised methods are often used as a preprocessing step to uncover structure before applying supervised techniques to labeled subsets of the data [L7].\n\n**Evaluation:**  \n- Supervised: accuracy, F1, RMSE, etc., against known labels.  \n- Unsupervised: silhouette score, explained variance (for PCA), or domain-specific metrics; no ground-truth target to compare against.\n\nWhat algorithm would you choose for customer segmentation if you have purchase history but no pre-defined segments?"
+  },
+  {
+   "kind": "study",
+   "q": "Explain Bayes' theorem with an example.",
+   "check_question": true,
+   "reply": "Bayes' theorem is a statistical technique that allows for the revision of probability estimates based on new information or evidence that allows for more accurate and efficient decision-making in uncertain situations [L12]. It's particularly useful when you need to update your beliefs about an event after seeing some data.\n\n## Bayes' Theorem Formula\n\nThe theorem states:\n\n$$P(H|E) = \\frac{P(E|H) \\cdot P(H)}{P(E)}$$\n\nWhere:\n- $P(H|E)$ is the **posterior probability** - probability of hypothesis H given evidence E\n- $P(E|H)$ is the **likelihood** - probability of evidence E given hypothesis H\n- $P(H)$ is the **prior probability** - initial belief in H before seeing E\n- $P(E)$ is the **marginal likelihood** - total probability of evidence E\n\n## Example: Medical Diagnosis\n\nLet's say we have a cancer screening test with these parameters:\n- Prevalence: 3% of population has this cancer ($P(H) = 0.03$)\n- Sensitivity: 80% chance test is positive if you have cancer ($P(E|H) = 0.80$)\n- False positive rate: 9% chance test is positive if you don't have cancer ($P(E|\\neg H) = 0.09$)\n\n**Question**: If a patient tests positive, what's the probability they actually have cancer?\n\nUsing Bayes' theorem:\n- $P(H) = 0.03$ (prior)\n- $P(E|H) = 0.80$ (likelihood)\n- $P(E|\\neg H) = 0.09$\n- $P(E) = P(E|H)P(H) + P(E|\\neg H)P(\\neg H) = 0.80 \\times 0.03 + 0.09 \\times 0.97 = 0.024 + 0.0873 = 0.1113$\n\n$$P(H|E) = \\frac{0.80 \\times 0.03}{0.1113} = \\frac{0.024}{0.1113} \\approx 0.2155$$\n\nSo even with a positive test, there's only about **21.55%** chance the patient has cancer [L13]. This illustrates why false positives matter - the low prevalence means most positives are actually false alarms.\n\n**check-your-understanding**: If the disease prevalence doubled to 6%, what would the new probability be given a positive test result?"
+  },
+  {
+   "kind": "study",
+   "q": "Why does gradient descent need a learning rate?",
+   "check_question": true,
+   "reply": "The learning rate is your step size—without it, you’re just taking steps of fixed size regardless of how steep or shallow the slope is.  \n\nHere’s why gradient descent *needs* a learning rate (η):\n\n1. **Controls step magnitude**: The update rule is  \n   θ ← θ − η ∇J(θ).  \n   The gradient tells you the direction; η scales it to determine how far you move in that direction.\n\n2. **Too small → slow convergence**: If η is tiny, each step is minuscule. You’ll eventually converge, but painfully slowly. In practice, this wastes compute and may never finish before hitting a timeout.\n\n3. **Too large → divergence or oscillation**: If η is too big, you overshoot the minimum. On flat regions you might be fine; on steep parts you can bounce around wildly or even diverge to infinity.\n\n4. **Different surfaces need different scales**: Some parameters change slowly (e.g., bias), others quickly (e.g., weight). A single global η is a compromise, which is why adaptive methods (Adam, RMSProp) exist.\n\n**Bottom line**: The learning rate lets you tune how aggressively you follow the gradient. Without it, you have no control over step size and can’t guarantee convergence behavior.\n\nWhat happens to the update rule if you set η = 0?"
+  },
+  {
+   "kind": "study",
+   "q": "What is entropy in thermodynamics?",
+   "check_question": true,
+   "reply": "Entropy is the thermodynamic state function that measures how disordered or randomized a system's microscopic configurations are [L21, L23]. In simple terms:\n\n- **Macroscopic definition**: For a reversible process at constant temperature T, the entropy change is ΔS = Q/T, where Q is heat exchanged (in joules) and T is in kelvin. Absorbing heat increases entropy; releasing it decreases entropy [L21].\n- **Microscopic interpretation**: Entropy quantifies the number of microscopic arrangements (microstates) that correspond to a given macrostate. More possible microstates = higher entropy [L23].\n- **Second law**: The total entropy of an isolated system (and the universe) never decreases; it either increases in irreversible processes or stays constant in ideal reversible ones [L22, L25].\n- **Third law**: At absolute zero (0 K), a perfect crystalline solid has zero entropy because there's only one microstate [L25].\n\nA common pitfall is thinking entropy always means \"messiness\"—it really counts accessible states. Also, while a system's entropy can decrease locally (e.g., freezing water), the universe's total entropy still increases due to heat dissipation [L24].\n\n**Check your understanding**: If you compress an ideal gas reversibly at constant temperature, does its entropy increase or decrease? Explain in terms of volume and molecular configurations."
+  },
+  {
+   "kind": "study",
+   "q": "Write a Python function that reverses a linked list.",
+   "check_question": true,
+   "reply": "Reversing a linked list is one of those classic problems that feels like you're fighting gravity with every node you touch. Here's the clean, iterative solution in Python:\n\n```python\ndef reverse_linked_list(head):\n    \"\"\"\n    Reverses a singly linked list iteratively.\n    \n    Args:\n        head: The head node of the linked list\n    \n    Returns:\n        The new head of the reversed linked list\n    \"\"\"\n    prev = None\n    current = head\n    \n    while current is not None:\n        # Store the next node before we break the link\n        next_node = current.next\n        \n        # Reverse the link: point current to previous\n        current.next = prev\n        \n        # Move pointers forward\n        prev = current\n        current = next_node\n    \n    return prev\n```\n\n**How it works:**\n\n1. Initialize `prev` to `None` (will become the new tail) and `current` to `head`\n2. In each iteration:\n   - Save `current.next` before we break the link\n   - Reverse the pointer: make `current.next` point to `prev`\n   - Advance both pointers (`prev` becomes the old `current`, `current` moves to the saved next node)\n3. When `current` is `None`, `prev` points to what was originally the last node—the new head\n\n**Why this approach?**  \nThe iterative method uses O(1) extra space and avoids recursion depth issues with long lists. The key insight is that we're essentially rewiring each node's `next` pointer to point backward, one at a time.\n\n**Common pitfalls:**\n- Forgetting to save `current.next` before overwriting it (you'll lose the rest of the list!)\n- Not returning `prev` instead of `head` at the end\n- Trying to modify the original head node directly without tracking where we've been\n\nNow, here's your check-your-understanding question: What would happen if you initialized `prev = head` instead of `None`?"
+  },
+  {
+   "kind": "study",
+   "q": "How does photosynthesis produce oxygen?",
+   "check_question": true,
+   "reply": "Photosynthesis produces oxygen by splitting water molecules in a process called photolysis. Here's how it works:\n\n**The Solution:**\nDuring the light-dependent reactions of photosynthesis, plants absorb photons (light energy) using chlorophyll and other pigments in their chloroplasts. This excites electrons to higher energy levels. To replace these lost electrons, an enzyme complex called Photosystem II splits water molecules (H₂O) into:\n- Oxygen (O₂), which is released as a byproduct\n- Protons (H⁺ ions), which contribute to the proton gradient\n- Electrons, which move through the electron transport chain\n\nThe overall chemical equation is:\n**6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂**\n\nAccording to your notes [L30], oxygen is generated as a waste product of photosynthesis, while the main products are carbohydrates (like glucose) and G3P. Your chemistry text [L27] confirms that green plants convert carbon dioxide and water into glucose and oxygen using light energy.\n\n**The Walkthrough:**\n1. Light hits Photosystem II in the thylakoid membranes\n2. Chlorophyll absorbs photons, exciting electrons to higher energy states\n3. Water-splitting complex (oxygen-evolving complex) removes electrons from H₂O molecules\n4. This splits 2H₂O → 4H⁺ + 4e⁻ + O₂\n5. Oxygen atoms combine to form O₂ gas, which diffuses out of the plant\n6. Electrons travel through an electron transport chain, creating ATP and NADPH\n7. These energy carriers power the Calvin cycle (light-independent reactions) to make glucose\n\nThe key insight: oxygen comes from water, not carbon dioxide. This was proven using isotopic labeling experiments in the 1930s-40s.\n\n**Check your understanding:** In the photosynthesis equation 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂, which reactant (CO₂ or H₂O) actually provides the oxygen atoms in the O₂ gas produced?"
+  }
+ ]
+}

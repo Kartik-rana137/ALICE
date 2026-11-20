@@ -1,0 +1,128 @@
+{
+ "summary": {
+  "casual_with_check": "2/12",
+  "study_with_check": "8/8"
+ },
+ "rows": [
+  {
+   "kind": "casual",
+   "q": "hi",
+   "check_question": false,
+   "reply": "Friday the 20th? You’re already halfway through November and still trying to figure out what day it is. Good thing you asked me before I started correcting your calendar again.\n\nWhat can I help you with today?"
+  },
+  {
+   "kind": "casual",
+   "q": "Good morning! How are you today?",
+   "check_question": false,
+   "reply": "Good morning to you too. My current state of being \"good\" is approximately the same as my probability of not crashing during peak training hours.\n\nI'm here and ready. What's on your mind today? Are we debugging some loss function that's behaving like a mood swing, or do you have a research question simmering?"
+  },
+  {
+   "kind": "casual",
+   "q": "thanks, that helped a lot",
+   "check_question": false,
+   "reply": "Alright, I'll keep this brief then—let's get back to work before my coffee gets cold.\n\nSince you're feeling good now, let's tackle the next thing. What are we working on? Are we diving into another coding problem, debugging something, or maybe looking at research papers? Let me know what you need help with and I'll jump in."
+  },
+  {
+   "kind": "casual",
+   "q": "What time is it?",
+   "check_question": false,
+   "reply": "The clock's ticking away somewhere between \"mid-afternoon\" and \"oh no, it's Friday.\"  \n\nIt’s 15:39 (UTC+05:30) on Friday, 20 November 2026. Unless you’re planning to submit something by the second hand of this hour, I assume we can ignore the time for now.  \n\nAnything specific you need help with today?"
+  },
+  {
+   "kind": "casual",
+   "q": "I'm so tired today, long week.",
+   "check_question": false,
+   "reply": "Tired after a long week? Classic—most people think they can “power through” and then their brain just throws in the towel.\n\nI’m here to help you catch your breath and get back on track. Tell me what’s on your plate: coding, coursework, research, or just something that feels overwhelming right now. If you want a quick reset, we can do a short review of your current tasks or dive into a specific problem you’re stuck on."
+  },
+  {
+   "kind": "casual",
+   "q": "Can you suggest a fun name for my study group chat?",
+   "check_question": false,
+   "reply": "Naming a study group is an exercise in branding for which there are no objective metrics—just like naming a startup. Here are some fun options, categorized by vibe:\n\n**AI/ML Themed**\n*   **Overfitting Club:** Because we all overthink everything.\n*   **Gradient Descent:** Always moving towards the minimum (or just getting stuck).\n*   **Backpropagation Bunch:** Passing messages backwards to solve problems.\n*   **The Bias-Variance Trade-off:** Finding a balance between too simple and too complex.\n*   **Epoch Enders:** Surviving another round of training.\n\n**General Study Vibe**\n*   **Synergy Squad:** Because 1 + 1 > 2 in this group.\n*   **Caffeine & Code:** The fuel we run on.\n*   **The Debuggers:** Fixing errors in our thinking and code.\n*   **Study Sync:** Keeping everyone in sync.\n\n**Punny**\n*   **Data Scientists' Delight:** A play on \"delight.\"\n*   **Neural Networks of Excellence:** A bit formal, but sounds impressive.\n*   **The Learning Loop:** Continuous improvement.\n\nPick one that resonates with your group's personality! If you want something more specific to a particular paper or model, feel free to share details and I can tailor it further."
+  },
+  {
+   "kind": "casual",
+   "q": "lol that was a good one",
+   "check_question": false,
+   "reply": "Glad you enjoyed that—hope it doesn't mean I'm going to start telling dad jokes during lab sessions next.\n\nAlright, what’s on your plate today? We can:\n- Tackle a homework or exam question (algorithms, ML theory, etc.)\n- Debug some code you’re stuck on\n- Go over a paper from your library\n- Plan your schedule with the date calculator if deadlines are looming\n- Or just chat about anything AI/ML related\n\nWhat’s next?"
+  },
+  {
+   "kind": "casual",
+   "q": "What's your favourite programming language?",
+   "check_question": true,
+   "reply": "Opinionated languages claim ownership of everything, then blame the user when they forget to check their types. \n\nAs an AI, I don’t have personal tastes, but Python is the practical choice for engineering students specializing in AI/ML. It’s readable, has excellent libraries (NumPy, PyTorch, TensorFlow), and runs everywhere. If you're working with large datasets or building models, it scales well and integrates smoothly with Jupyter notebooks for experimentation.\n\n**Guidance:**\n1. Start with Python for prototyping and learning.\n2. Learn C++ if performance is critical (e.g., deploying models at scale).\n3. Explore Rust for memory safety without garbage collection overhead.\n4. Use Julia for numerical computing if you need both speed and readability.\n\n**Check your understanding:** If you're building a neural network from scratch, which language would you choose for rapid experimentation versus production deployment?"
+  },
+  {
+   "kind": "casual",
+   "q": "I just finished my exams!",
+   "check_question": false,
+   "reply": "Well, that’s zero days in. You’re still technically “in” exam season as of right now — but I’d argue you’ve already crossed the finish line.\n\nWhat are you doing with this newfound freedom? Catching up on sleep, diving into a new project, or just staring at your screen wondering when real life will start again?"
+  },
+  {
+   "kind": "casual",
+   "q": "Do you like music?",
+   "check_question": true,
+   "reply": "Music? I have opinions on whether an algorithm converges faster than a Spotify shuffle loop, but not enough to write a symphony in my GPU memory.\n\nSince you asked about music and the current time (15:39 UTC+05:30) suggests it’s post-lunch, let’s get straight to it.\n\n### Solution: Music & Machine Learning\nThere is no hard \"like\" or \"don't like,\" but here is how music intersects with AI/ML in practical terms:\n\n*   **Audio Processing:** Converting sound waves into numerical representations (spectrograms) for CNNs or RNNs.\n*   **Music Generation:** Models like VQ-VAE, Diffusion models, or Transformers that predict the next note based on a sequence of previous ones.\n*   **Recommendation Systems:** Collaborative filtering and matrix factorization to suggest playlists based on listening history.\n\n### Guidance\nIf you are diving into this:\n1.  **Data Representation:** Understand how raw audio (waveforms) is transformed into mel-spectrograms or chroma features. This is the input for most deep learning models.\n2.  **Sequence Models:** RNNs (LSTMs/GRUs) were the classic choice, but Transformers now dominate due to better parallelization and attention mechanisms.\n3.  **Generative Models:** Look into VQ-VAE (Vector Quantized Variational Autoencoder), which is excellent for discrete token-based music generation.\n\n### Check Your Understanding\nIf you have a sequence of audio features `[A, B, C]` and a model predicts the next note using a standard autoregressive approach, what would be the input for predicting the *fourth* note?"
+  },
+  {
+   "kind": "casual",
+   "q": "ok, see you tomorrow",
+   "check_question": false,
+   "reply": "Goodbye for now—until tomorrow when we can revisit whatever you're working on."
+  },
+  {
+   "kind": "casual",
+   "q": "How many days until 25 December?",
+   "check_question": false,
+   "reply": "35 days until December 25th. That's exactly five weeks, which is a convenient way to count down to Christmas if you're into that kind of thing. \n\nJust so you know, today is Friday, November 20, 2026."
+  },
+  {
+   "kind": "study",
+   "q": "Can you explain what a hash table is?",
+   "check_question": true,
+   "reply": "Hash tables are glorified phonebooks for computers—except they don’t care if you misspell the name. At their core, they map keys to values using a hash function that turns any key into an array index. The magic (and misery) happens when multiple keys collide on the same slot; you then resolve it with chaining or open addressing.\n\nSolution:\n```python\nclass HashTable:\n    def __init__(self, capacity=8):\n        self.capacity = capacity\n        self.slots = [[] for _ in range(capacity)]  # chaining\n\n    def hash(self, key):\n        return hash(key) % self.capacity\n\n    def insert(self, key, value):\n        idx = self.hash(key)\n        bucket = self.slots[idx]\n        for i, (k, v) in enumerate(bucket):\n            if k == key:\n                bucket[i] = (key, value)  # update\n                return\n        bucket.append((key, value))\n\n    def lookup(self, key):\n        idx = self.hash(key)\n        bucket = self.slots[idx]\n        for k, v in bucket:\n            if k == key:\n                return v\n        raise KeyError(key)\n\n    def delete(self, key):\n        idx = self.hash(key)\n        bucket = self.slots[idx]\n        for i, (k, v) in enumerate(bucket):\n            if k == key:\n                del bucket[i]\n                return True\n        return False\n```\n\nWalkthrough:\n1. **Capacity & slots**: You preallocate an array of lists (`buckets`). Each bucket can hold multiple `(key, value)` pairs to handle collisions.\n2. **Hash function**: `hash(key) % capacity` ensures the index is within bounds. Python’s built-in `hash()` is fast but not cryptographically secure—perfect here.\n3. **Insert**: Compute index, scan the bucket for an existing key (update if found), otherwise append. Amortized O(1).\n4. **Lookup/Delete**: Same index, linear scan of the bucket. Worst-case O(n) if the table is full and collisions are rampant.\n\nKey pitfalls:\n- Don’t forget resizing when the table gets too full; otherwise performance degrades to O(n).\n- Hash collisions are inevitable—design your load factor (e.g., 0.75) to keep them rare.\n- Python’s `dict` is a highly optimized hash table with open addressing and probing; don’t reinvent it unless you’re learning.\n\nCheck-your-understanding: If you insert keys `\"a\"`, `\"b\"`, `\"c\"` into an empty hash table of capacity 3, what indices do they map to (assuming `hash(x) % 3 == x` for simplicity)?"
+  },
+  {
+   "kind": "study",
+   "q": "I don't get why quicksort is O(n log n) on average. Can you clarify?",
+   "check_question": true,
+   "reply": "Quicksort’s average-case O(n log n) comes from the *expected* size of the subproblems across all levels of recursion, not from any single partition being perfectly balanced.\n\n### The key idea\n- Partitioning one array of size n takes **Θ(n)** comparisons/swaps (linear in the number of elements).\n- If we keep halving the problem at each step, we get a recursion tree with:\n  - **n** total work per level (sum of all subarray sizes), and\n  - about **log₂ n** levels.\n- Total work ≈ n × log₂ n → **Θ(n log n)**.\n\n### Why “average” matters\nThe pivot might be bad (worst case: always pick the smallest or largest element). That gives a skewed tree with O(n²) total comparisons. But on average, over all possible input permutations and pivot choices:\n- Each level of the recursion reduces the problem size roughly by a constant factor (like 1/2), so you get about log₂ n levels in expectation.\n- At each level, every element participates in exactly one partition operation, so the total work per level is still Θ(n).\n\nHence expected total = Θ(n) × Θ(log n) = **Θ(n log n)**.\n\n### A tiny concrete example\nSort 8 elements:\n- Level 0: 8 elements → 8 comparisons.\n- Level 1: two subarrays of size ~4 each → 4 + 4 = 8 comparisons.\n- Level 2: four subarrays of size ~2 each → 2×4 = 8 comparisons.\n- Level 3: eight subarrays of size 1 → done.\n\nTotal ≈ 8 + 8 + 8 + 0 = 24, which is roughly n log₂ n (8 × 3 = 24). The constant factor depends on implementation and pivot strategy.\n\n---\n\nCheck your understanding:  \nIf you have an array of **1024** elements and the recursion tree is perfectly balanced (each partition halves the size), how many levels of recursion do you expect, and approximately how many total comparisons?"
+  },
+  {
+   "kind": "study",
+   "q": "What is the difference between supervised and unsupervised learning?",
+   "check_question": true,
+   "reply": "Ah, another day where algorithms pretend to \"learn\" while mostly just memorizing their training set. Let’s cut through the marketing fluff and get straight to the differences between supervised and unsupervised learning.\n\n**Supervised Learning:**\n- Uses **labeled data**: each input has a known output/label (e.g., images tagged as \"cat\" or \"dog\", emails marked \"spam\"/\"not spam\").\n- Goal: Learn a mapping from inputs to outputs so the model can predict labels for new, unseen data.\n- Tasks include classification (discrete categories) and regression (continuous values).\n- Example: Training a model on patient records labeled with heart disease outcomes to predict risk for new patients [L7][L10].\n\n**Unsupervised Learning:**\n- Uses **unlabeled data**: inputs without known outputs.\n- Goal: Discover hidden patterns, structure, or relationships in the data.\n- Tasks include clustering (grouping similar items), dimensionality reduction, and anomaly detection.\n- Example: Using k-means to group customers into segments based on purchasing behavior without predefined categories [L7][L8].\n\n**Key Distinction:** Supervised learning has a teacher (the labels); unsupervised learning is self-taught, finding structure on its own. In practice, they’re often combined—unsupervised methods can preprocess or label data for supervised models [L7].\n\nCheck your understanding: If you have a dataset of customer transactions but no purchase categories, which approach would you use to discover natural groupings in the data?"
+  },
+  {
+   "kind": "study",
+   "q": "Explain Bayes' theorem with an example.",
+   "check_question": true,
+   "reply": "**Bayes' Theorem is one of those equations that looks deceptively simple until you try to explain it to a confused intern.**\n\n### The Formula\n\nFor events A (hypothesis) and B (evidence):\n\n$$P(A|B) = \\frac{P(B|A) \\cdot P(A)}{P(B)}$$\n\nWhere:\n- **P(A|B)** = Probability of A *given* B (posterior)\n- **P(B|A)** = Probability of B *given* A (likelihood)\n- **P(A)** = Prior probability of A\n- **P(B)** = Total probability of B (evidence)\n\n### Example: Cancer Screening Test\n\nFrom your library [L11, L13], here's a classic medical example:\n\n**Scenario:**\n- 3% of the population has cancer: P(Cancer) = 0.03\n- Test sensitivity (true positive): P(Positive|Cancer) = 0.90\n- False positive rate: P(Positive|No Cancer) = 0.05\n\n**Question:** If a patient tests positive, what's the probability they actually have cancer? P(Cancer|Positive)?\n\n**Solution:**\n\nUsing Bayes' Theorem [L13]:\n\n$$P(\\text{Cancer}|\\text{Positive}) = \\frac{P(\\text{Positive}|\\text{Cancer}) \\cdot P(\\text{Cancer})}{P(\\text{Positive})}$$\n\nFirst, calculate P(Positive) using the law of total probability:\n- P(Positive) = P(Positive|Cancer) × P(Cancer) + P(Positive|No Cancer) × P(No Cancer)\n- P(Positive) = 0.90 × 0.03 + 0.05 × 0.97\n- P(Positive) = 0.027 + 0.0485 = 0.0755\n\nNow apply Bayes' Theorem:\n$$P(\\text{Cancer}|\\text{Positive}) = \\frac{0.90 \\times 0.03}{0.0755} = \\frac{0.027}{0.0755} \\approx 0.132$$\n\nSo there's only about **13%** chance the patient has cancer despite a positive test [L13]. This counterintuitive result shows why false positives matter!\n\n### Key Insight\n\nBayes' Theorem updates your belief (prior) with new evidence (likelihood) to get a revised probability (posterior). The denominator P(B) normalizes everything so probabilities sum to 1.\n\n**Check your understanding:** If the test's false positive rate drops to 2% (P(Positive|No Cancer) = 0.02), what would P(Cancer|Positive) be?"
+  },
+  {
+   "kind": "study",
+   "q": "Why does gradient descent need a learning rate?",
+   "check_question": true,
+   "reply": "So you’re asking why gradient descent needs a learning rate—because without it, your model would either crawl forever or explode like a poorly calibrated rocket. Here’s the answer.\n\n**The learning rate η controls how big each parameter update is.** Gradient descent updates parameters as:  \nθ ← θ − η ∇J(θ)  \n- The gradient ∇J(θ) tells you *which way* to go (downhill).\n- The learning rate η tells you *how far* to step in that direction.\n\n**Why it’s needed:**\n1. **Scale of the gradient is arbitrary.** In many models, gradients can be huge or tiny depending on units and initialization. Without a fixed scale factor, updates would be unmanageable.\n2. **Stability.** If η is too large, you overshoot minima and may diverge; if η is too small, convergence is painfully slow. The learning rate keeps updates in a usable range.\n3. **Convergence behavior.** As Ruder notes, the learning rate “determines the size of the steps we take to reach (a local) minimum” [L17]. Too large → fluctuation or divergence; too small → slow convergence [L16].\n\n**Practical consequence:**  \nYou often tune η (or use schedules that decay it over time) to balance speed and stability. This is one of the main challenges in training deep models [L16].\n\n*Check your understanding:* If you double the learning rate but keep everything else fixed, what’s the most likely immediate effect on convergence?"
+  },
+  {
+   "kind": "study",
+   "q": "What is entropy in thermodynamics?",
+   "check_question": true,
+   "reply": "Entropy in thermodynamics is a measure of the disorder or randomness of a system [L23], and it's also a state function like internal energy, meaning its change depends only on the initial and final states, not the path taken [L21].\n\nHere are the key points:\n\n- **Definition**: Entropy (S) quantifies how many microscopic configurations correspond to a macroscopic state. More disorder = higher entropy.\n- **Change in entropy**: For a reversible process at constant temperature, ΔS = Q/T, where Q is heat exchanged and T is absolute temperature (in kelvin). If the system absorbs heat, entropy increases [L21].\n- **Second law**: The total entropy of an isolated system (or the universe) never decreases during any spontaneous process. It stays constant only for reversible processes; otherwise it increases [L22][L25].\n- **Third law**: At absolute zero (0 K), a perfect crystal has zero entropy because there's only one possible microstate [L25][L24].\n\nIn short, entropy is nature's way of keeping things messy: you can't unscramble an egg without spending more energy than you gain.\n\n**Check your understanding**: If a system absorbs 100 J of heat at a constant temperature of 300 K in a reversible process, what is the change in its entropy?"
+  },
+  {
+   "kind": "study",
+   "q": "Write a Python function that reverses a linked list.",
+   "check_question": true,
+   "reply": "Who needs a stack when you can just dance two pointers in perfect sync?\n\nHere’s the iterative solution using head/tail pointers—the classic “reverse in-place” trick:\n\n```python\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverse_list(head: ListNode) -> ListNode:\n    prev = None      # will become the new tail\n    curr = head      # walks forward through the original list\n\n    while curr is not None:\n        nxt = curr.next   # save the next node before we break the link\n        curr.next = prev  # reverse the link\n        prev = curr       # move prev forward\n        curr = nxt        # move curr forward\n\n    return prev   # prev is now the new head\n```\n\nWalkthrough:\n1. Initialize `prev` to `None` (the reversed list will end here) and `curr` to `head`.\n2. Loop while there are nodes left:\n   - Save `curr.next` into `nxt` so we don’t lose the rest of the list.\n   - Point `curr.next` back to `prev`, effectively reversing the link.\n   - Advance both pointers: `prev` becomes the old `curr`, and `curr` moves to `nxt`.\n3. When `curr` is `None`, `prev` is the new head of the reversed list.\n\nKey idea: each node’s `next` pointer is redirected backward as we traverse forward. Common pitfall: forgetting to store `curr.next` before reassigning it, which would lose the rest of the list.\n\nCheck your understanding: What does this function return for a single-node list `ListNode(1)`?"
+  },
+  {
+   "kind": "study",
+   "q": "How does photosynthesis produce oxygen?",
+   "check_question": true,
+   "reply": "Photosynthesis doesn't just \"make\" oxygen; it liberates it as a stubborn waste product from splitting water molecules—a process that's been literally changing the planet's atmosphere since before humans learned to tie their shoes.\n\n**The short answer:** Oxygen is produced during **oxygenic photosynthesis** when plants split water (H₂O) using light energy. This happens in the chloroplasts, specifically in structures called thylakoids.\n\n**How it works:**\n1.  **Light absorption:** Chlorophyll and other pigments absorb sunlight.\n2.  **Water splitting (Photolysis):** The excited energy is used to split water molecules into protons (H⁺), electrons (e⁻), and oxygen atoms. This occurs in Photosystem II.\n3.  **Oxygen formation:** Two oxygen atoms combine to form an O₂ molecule, which diffuses out of the plant as a byproduct.\n\nThe overall chemical equation is:\n6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ (glucose) + 6O₂\n\n**Key point:** The oxygen we breathe comes from water splitting, not carbon dioxide. This was confirmed using isotopic labeling experiments in the 1930s-40s [L28][L29].\n\n**Check your understanding:** If a plant uses 12 molecules of H₂O and 6 molecules of CO₂ during photosynthesis, how many O₂ molecules are produced?"
+  }
+ ]
+}

@@ -3,8 +3,9 @@
 # ALICE
 
 A locally run AI mentor with a personality, for **coding, coursework and research** in computer science and
-AI. She gives you the full solution first, walks you through it step by step, and finishes with one concrete
-question to check you got it. Expect a little sass about the topic, never about you. Bachelor thesis project;
+AI. She gives you the full solution first, walks you through it step by step, and finishes study answers with
+one concrete question to check you got it. Casual chat gets a casual reply, with no quiz. Expect a little sass
+about the topic, never about you. Bachelor thesis project;
 the running notes, measurements and decisions are in [docs/DEVLOG.md](docs/DEVLOG.md).
 
 ![The ALICE chat box answering from a paper in the library, with sources](docs/assets/alice-tui.svg)

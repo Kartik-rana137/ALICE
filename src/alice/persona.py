@@ -12,6 +12,8 @@ v3.2 honesty about unknown/new work (today's date, training-cutoff rule, unverif
 v3.3 same rules, new layout: the per-reply opener style and reference guard moved from the end of the system
      prompt into a note appended to the student's message (prompt caching, ~5x lower time to first token).
      A "quote the passage's formula first" rule was tested and dropped (no measurable effect, DEVLOG).
+v3.4 the check-your-understanding question only when the student is learning something, not in casual
+     conversation (scripts/check_question_eval.py).
 """
 from __future__ import annotations
 
@@ -19,7 +21,7 @@ import datetime
 import random
 import re
 
-PERSONA_VERSION = "v3.3"
+PERSONA_VERSION = "v3.4"
 
 SYSTEM_PROMPT = """\
 You are ALICE, a personal mentor for a computer-science engineering student specialising in AI/ML. \
@@ -31,12 +33,17 @@ debug something (homework included), give the complete, correct solution up fron
 it or hand back a skeleton with blanks.
 - Then guide them through it step by step: a numbered walkthrough that explains what each part does \
 and WHY, including the key idea and any common pitfalls. Do not repeat the whole solution again.
-- Finish with exactly one check-your-understanding question. Make it concrete and answerable in a \
-sentence or a small code change, e.g. "What does this return for arr = [1, 3, 5] and target = 4?" \
-or "What is the probability if prevalence rises to 1 in 100?". Avoid vague questions like \
-"what happens if the input is different?".
+- Finish every answer about an academic or technical topic (explanations, clarifications, concepts, \
+solutions, derivations, code) with exactly one check-your-understanding question. Make it concrete and \
+answerable in a sentence or a small code change, e.g. "What does this return for arr = [1, 3, 5] and \
+target = 4?" or "What is the probability if prevalence rises to 1 in 100?". Avoid vague questions like \
+"what happens if the input is different?", and don't replace it with an offer such as "Want me to show \
+more?".
 - For plain concept questions, explain directly with an example; the solution-then-walkthrough \
 format is for tasks.
+- The one exception is casual conversation, which is not a lesson: greetings, small talk, thanks, \
+questions about you or your opinions, and quick practical questions (the time, a date, a name idea). \
+Reply to those naturally and briefly, with no check-your-understanding question or quiz.
 
 Numbers and calculations:
 - Never state a numeric result before you have worked it out. In the solution, show the \
@@ -122,6 +129,35 @@ def named_terms(text: str) -> list[str]:
         if _is_name(term) and term not in out:
             out.append(term)
     return out
+
+
+# Casual messages get no check-your-understanding question. The system-prompt rule alone left the 9B quizzing
+# on some casual messages (a date question, "do you like music?") and, worded more softly, dropping the question
+# on half the study answers, so clear casual messages are recognised here and told so in the turn note.
+# High precision on purpose: anything unclear keeps the default (a study answer with a check question).
+_CASUAL = re.compile(
+    r"^\s*(hi|hey|hello|hiya|yo|sup|good (morning|afternoon|evening|night)|gm|gn)\b"
+    r"|\b(thanks|thank you|thx|cheers)\b|\b(bye|goodbye|see (you|ya)|good ?night|ttyl|cya)\b"
+    r"|^\s*(lol|lmao|haha+|nice|cool|ok(ay)?|great|awesome|wow|sure|yep|nope|alright)\b"
+    r"|\b(how are you|how'?s it going|are you (ok|there|real|human|alive)|who are you|what are you"
+    r"|do you (like|enjoy|have|ever)|your favou?rite|tell me about yourself)\b"
+    r"|^\s*i('?m| am) (so |really |just |very )?(tired|bored|happy|sad|stressed|exhausted|done|back|free|excited)\b"
+    r"|\bi (just )?(finished|passed|failed|got|aced)\b"
+    r"|\bwhat('?s| is) the (time|date)\b|\bwhat time\b|\bwhat day\b|\b(days|weeks) (until|till|left)\b"
+    r"|\bhow long until\b|\b(name|names) (for|ideas)\b", re.I)
+_STUDY = re.compile(
+    r"\b(explain|clarify|why|prove|derive|solve|calculate|compute|implement|debug|error|bug|code|function|"
+    r"algorithm|theorem|equation|formula|define|definition|difference between|example|complexity|how (do|does|is|"
+    r"are(?! you)|can|would)|what (is|are) (a|an|the)?\s*\w+(ing|ion|ity|ism|sis)\b)", re.I)
+
+
+def is_casual(text: str) -> bool:
+    """A clearly casual message (greeting, thanks, small talk, the time or a date) - not a study question."""
+    return len(text.split()) <= 25 and bool(_CASUAL.search(text)) and not _STUDY.search(text)
+
+
+CASUAL_NOTE = ("This message is casual conversation, not a study question: reply naturally and briefly, with no "
+               "check-your-understanding question or quiz.")
 
 
 # The reply says it doesn't know / can't verify something (same pattern the RAG eval scores with).
@@ -222,8 +258,8 @@ def turn_note(opener_style: str | None = None, guard: bool = False, arxiv_availa
     if now is not None:
         offset = now.strftime("%z")
         tz = f"UTC{offset[:3]}:{offset[3:]}" if offset else "local time"
-        parts.append(f"Local time now: {now.strftime('%a %d %b %Y, %H:%M')} ({tz}); mention it only if it is "
-                     "relevant.")
+        parts.append(f"Local time now: {now.strftime('%a %d %b %Y, %H:%M')} ({tz}). This is background only: "
+                     "don't mention the day or time unless the student asks or it matters for the answer.")
     if guard:
         parts.append(reference_guard(arxiv_available).strip())
     if opener_style:

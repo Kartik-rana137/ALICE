@@ -16,12 +16,16 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 claude = ["anthropic>=2.10"]   # optional escalation to Claude (/claude)
+gui = ["starlette>=1.0", "uvicorn>=0.30", "websockets>=13", "python-multipart>=0.0.9", "pywebview>=5"]   # alice gui
 
 [project.scripts]
 alice = "alice.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"alice.gui" = ["static/*", "static/vendor/*", "static/vendor/*/*", "static/vendor/*/*/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -38,6 +38,7 @@ _CODE_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.S)
 COMMANDS = {                   # shown as hints while typing a /command
     "/think": "on|off - step-by-step reasoning (slower, better at maths)",
     "/claude": "[question] - ask Claude: re-check the last answer, or a new question",
+    "/read": "PATH [question] - read a PDF, Word or PowerPoint file (or drag it into the chat)",
     "/memory": "what ALICE remembers about you",
     "/remember": "TEXT - add a note to long-term memory",
     "/forget": "ID|all - delete memory notes",
@@ -59,15 +60,20 @@ class ConfirmRun(ModalScreen[bool]):
     BINDINGS = [Binding("y", "answer(True)", "Run"), Binding("n", "answer(False)", "Don't run"),
                 Binding("escape", "answer(False)", "Don't run", show=False)]
 
-    def __init__(self, tool_name: str, code: str):
+    LEXERS = {"python": "python", "c": "c", "cpp": "cpp", "c++": "cpp", "java": "java"}
+
+    def __init__(self, tool_name: str, code: str, language: str = "python", stdin: str = ""):
         super().__init__()
-        self.tool_name, self.code = tool_name, code
+        self.tool_name, self.code, self.language, self.stdin = tool_name, code, language or "python", stdin
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog"):
-            yield Label(f"ALICE wants to run [b]{self.tool_name}[/b]. It runs as you, on this computer.")
+            yield Label(f"ALICE wants to run [b]{self.language}[/b] code. It runs as you, on this computer.")
             with VerticalScroll(id="code"):
-                yield Static(Syntax(self.code, "python", line_numbers=True, word_wrap=True))
+                yield Static(Syntax(self.code, self.LEXERS.get(self.language.lower(), "text"), line_numbers=True,
+                                    word_wrap=True))
+            if self.stdin:
+                yield Static("Input it will get:\n" + self.stdin, markup=False, classes="summary")
             with Horizontal(id="buttons"):
                 yield Button("Run it (y)", variant="success", id="yes")
                 yield Button("Don't run (n)", variant="error", id="no")
@@ -251,6 +257,8 @@ class AliceApp(App):
                 parts.append(f"memory {s.memory_size} notes")
             if getattr(s, "claude", None):
                 parts.append("Claude on call")
+            if getattr(s, "document", None) is not None:
+                parts.append(f"open: {s.document.title[:40]}")
             background = getattr(s, "background", None)
             if background:
                 parts.append(f"{background}...")
@@ -376,6 +384,11 @@ class AliceApp(App):
                 self.prepare_escalation(cmd.escalate_question)
                 return
             self.add_line(cmd.message, "info")
+            if cmd.ask:                                   # /read (or a dragged file): ask about it right away
+                self.add_user(cmd.ask)
+                self._begin_turn("reading the document")
+                self.answer(cmd.ask)
+                return
             self.refresh_status()
             return
         self.add_user(text)
@@ -419,9 +432,11 @@ class AliceApp(App):
         answer: dict = {}
         done = threading.Event()
         code = str(args.get("code", json.dumps(args, indent=2)))
+        language, stdin = str(args.get("language", "python")), str(args.get("stdin", "") or "")
 
         def show() -> None:
-            self.push_screen(ConfirmRun(tool.name, code), callback=lambda ok: (answer.update(ok=bool(ok)), done.set()))
+            self.push_screen(ConfirmRun(tool.name, code, language, stdin),
+                             callback=lambda ok: (answer.update(ok=bool(ok)), done.set()))
         self.call_from_thread(show)
         while not done.wait(0.2):
             if self.closing or self.cancel.is_set():

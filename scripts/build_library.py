@@ -93,6 +93,37 @@ BOOKS = [
      "CC BY-NC-SA"),
     ("chemistry", "Chemistry 2e (OpenStax)", OPENSTAX + "chemistry-2e_-_WEB.pdf", "CC BY-NC-SA"),
     ("biology", "Biology 2e (OpenStax)", OPENSTAX + "Biology-2e_-_WEB.pdf", "CC BY-NC-SA"),
+    # First-year engineering syllabus (added 2026-11-20). Already covered by the books above: multivariable and
+    # vector calculus, sequences/series and power series (Calculus 2-3), engineering physics, mechanics and
+    # thermodynamics (University Physics 1-3), electrochemistry/batteries/corrosion (Chemistry 2e), cell
+    # biology and ecology (Biology 2e), Python basics (Introduction to Python Programming).
+    ("math", "Interactive Linear Algebra (Margalit, Rabinoff)", "https://textbooks.math.gatech.edu/ila/ila.pdf",
+     "GFDL"),
+    ("math", "Linear Algebra (Cherney, Denton, Waldron; UC Davis)",
+     "https://www.math.ucdavis.edu/~linear/linear-guest.pdf", "free textbook"),
+    ("math", "Notes on Diffy Qs: Differential Equations for Engineers (Lebl)", "https://www.jirka.org/diffyqs/diffyqs.pdf",
+     "CC BY-SA"),
+    ("math", "Contemporary Mathematics (OpenStax)", OPENSTAX + "contemporary-mathematics_-_WEB.pdf", "CC BY-NC-SA"),
+    ("cs", "Think Python 2e (Downey)", "https://greenteapress.com/thinkpython2/thinkpython2.pdf", "CC BY-NC"),
+    ("cs", "Beej's Guide to C Programming", "https://beej.us/guide/bgc/pdf/bgc_usl_c_1.pdf", "CC BY-NC-ND"),
+    ("engineering", "Lessons in Electric Circuits, Vol. I: DC (Kuphaldt)",
+     "https://www.ibiblio.org/kuphaldt/electricCircuits/DC/DC.pdf", "Design Science License"),
+    ("engineering", "Lessons in Electric Circuits, Vol. II: AC (Kuphaldt)",
+     "https://www.ibiblio.org/kuphaldt/electricCircuits/AC/AC.pdf", "Design Science License"),
+    ("engineering", "Lessons in Electric Circuits, Vol. III: Semiconductors (Kuphaldt)",
+     "https://www.ibiblio.org/kuphaldt/electricCircuits/Semi/SEMI.pdf", "Design Science License"),
+    ("engineering", "Lessons in Electric Circuits, Vol. IV: Digital (Kuphaldt)",
+     "https://www.ibiblio.org/kuphaldt/electricCircuits/Digital/DIGI.pdf", "Design Science License"),
+    ("engineering", "Engineering Statics: Open and Interactive (Baker, Haynes)",
+     "https://engineeringstatics.org/pdf/statics.pdf", "CC BY-NC-SA"),
+    ("engineering", "Additive Manufacturing Essentials (OpenStax)",
+     OPENSTAX + "Additive_Manufacturing_Essentials_-_WEB.pdf", "CC BY-NC-SA"),
+    ("chemistry", "Organic Chemistry (OpenStax)", OPENSTAX + "organic-chemistry_-_WEB.pdf", "CC BY-NC-SA"),
+    ("english", "Writing Guide with Handbook (OpenStax)", OPENSTAX + "WritingGuide-WEB.pdf", "CC BY-NC-SA"),
+    ("ethics", "Business Ethics (OpenStax)", OPENSTAX + "business-ethics_-_WEB.pdf", "CC BY-NC-SA"),
+    # Not downloadable by a script (their hosts answer automated requests with 403): Introduction to
+    # Environmental Science (USG), Open Technical Communication (Kennesaw), Pressbooks technical-writing texts,
+    # the Constitution of India (legislative.gov.in). Download them in a browser and use /read or alice ingest.
 ]
 # open-access papers outside arXiv: (subject, title, url, licence)
 OPEN_PAPERS = [
@@ -195,9 +226,11 @@ def main() -> int:
     ap.add_argument("--only", nargs="*", help="subjects: ai cs math physics chemistry biology")
     ap.add_argument("--no-books", action="store_true")
     ap.add_argument("--no-ingest", action="store_true")
+    ap.add_argument("--reingest-books", action="store_true",
+                    help="afterwards, re-ingest the books already in the library (section names from their bookmarks)")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
-    subjects = args.only or ["ai", "cs", "math", "physics", "chemistry", "biology"]
+    subjects = args.only or ["ai", "cs", "math", "physics", "chemistry", "biology", "engineering", "english", "ethics"]
 
     items: list[tuple[str, str, str, Path]] = []      # (subject, title, url, file)
     for s, i, title in verify_arxiv(subjects):
@@ -226,12 +259,14 @@ def main() -> int:
         return 0
 
     from alice import config
-    from alice.library import Library, LlamaEmbedder
+    from alice.library import BOOK_MIN_PAGES, Library, LlamaEmbedder
     from alice.llm import server_healthy
     gpu = config.EMBED_DEVICE == "gpu" or not server_healthy()
     lib, emb = Library(), LlamaEmbedder(gpu=gpu)
     print(f"ingesting into {config.LIBRARY_DIR} (embedding on {'GPU' if gpu else 'CPU'}) ...", flush=True)
     t0 = time.time()
+    # Books ingested before this run (the ones added now already get their sections from the bookmarks).
+    old_books = {d[0] for d in lib.documents() if (d[2] or 0) >= BOOK_MIN_PAGES}
     try:
         for title, path in ready:
             t = time.time()
@@ -241,6 +276,14 @@ def main() -> int:
                 print(f"  failed  {path.name}: {type(e).__name__}: {e}", flush=True)
                 continue
             print(f"  {status:7} {title} ({n} chunks, {time.time() - t:.0f} s)", flush=True)
+        if args.reingest_books and old_books:
+            print(f"re-ingesting {len(old_books)} books already in the library ...", flush=True)
+            last = [time.time()]
+
+            def done(title, status, n):
+                print(f"  {status:7} {title} ({n} chunks, {time.time() - last[0]:.0f} s)", flush=True)
+                last[0] = time.time()
+            lib.rebuild(emb, doc_ids=old_books, on_done=done)
     finally:
         emb.stop()
     print(f"done in {(time.time() - t0) / 60:.1f} min; the library has {len(lib.documents())} documents")

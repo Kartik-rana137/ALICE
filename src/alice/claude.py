@@ -153,8 +153,8 @@ def _turn_parts(turn: list[dict]) -> tuple[str, list[tuple[str, str]], str]:
     tools: list[tuple[str, str]] = []
     question, reply = "", ""
     for m in turn:
-        if m["role"] == "user" and not question:
-            question = persona.strip_note(m.get("content") or "")
+        if m["role"] == "user" and not question:              # an attached document goes along: it's the context
+            question = persona.strip_note(m.get("content") or "", keep_documents=True)
         elif m["role"] == "assistant" and m.get("tool_calls"):
             for c in m["tool_calls"]:
                 names[c["id"]] = c["function"]["name"]

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALICE</title>
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="/static/vendor/hljs/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/static/vendor/hljs/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">ALICE</div>
+  <div id="chips"></div>
+  <div class="actions">
+    <label class="switch" title="Step-by-step reasoning: slower, better at maths and logic">
+      <input type="checkbox" id="thinking"><span>Thinking</span>
+    </label>
+    <button id="attach" title="Read a PDF, Word or PowerPoint file (or drop it on the window)">Add file</button>
+    <button id="claude" class="hidden" title="Ask Claude about the last answer (shows what is sent first)">Ask Claude</button>
+    <button id="newchat" title="Start a new conversation">New chat</button>
+  </div>
+</header>
+
+<main id="log" aria-live="polite"></main>
+
+<footer id="composer">
+  <div id="hints" class="hidden"></div>
+  <div class="row">
+    <textarea id="input" rows="1" placeholder="Loading the model..." disabled
+              aria-label="Message ALICE"></textarea>
+    <button id="send" class="primary" disabled>Send</button>
+    <button id="stop" class="danger hidden">Stop</button>
+  </div>
+  <div id="status">Starting...</div>
+</footer>
+
+<div id="drop" class="hidden"><div>Drop a PDF, Word or PowerPoint file to read it</div></div>
+<input type="file" id="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md">
+
+<div id="modal" class="hidden" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+    <div class="buttons">
+      <button id="modal-no">Cancel</button>
+      <button id="modal-yes" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<script src="/static/vendor/katex/katex.min.js"></script>
+<script src="/static/vendor/hljs/highlight.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -54,7 +54,7 @@ def calculate(expression: str) -> str:
         return "error: expression too long"
     if re.search(r"\bimport\b|;|\bfor\b|\bdef\b|(?<![<>=!])=(?!=)", expr):
         return ("error: calculate takes ONE arithmetic expression (no imports, statements, variables or "
-                "loops). Inline the numbers, e.g. 'exp(2)/(exp(2)+exp(1)+exp(-1))', or use run_python for code.")
+                "loops). Inline the numbers, e.g. 'exp(2)/(exp(2)+exp(1)+exp(-1))', or use run_code for code.")
     try:
         value = _eval(ast.parse(expr, mode="eval"))
     except ZeroDivisionError:

@@ -8,7 +8,7 @@ one concrete question to check you got it. Casual chat gets a casual reply, with
 about the topic, never about you. Bachelor thesis project;
 the running notes, measurements and decisions are in [docs/DEVLOG.md](docs/DEVLOG.md).
 
-![The ALICE chat box answering from a paper in the library, with sources](docs/assets/alice-tui.svg)
+![The ALICE desktop window: a formatted maths answer with a Python code block that has Copy and Run buttons](docs/assets/alice-gui.png)
 
 ## What she does
 
@@ -19,6 +19,11 @@ the running notes, measurements and decisions are in [docs/DEVLOG.md](docs/DEVLO
   and about numbers that aren't in the cited passages. Nicknames like "the ResNet paper" work.
 - **Checks her own work.** A calculator for every non-trivial number, a check that the final answer matches
   it, and a warning when a reply claims a search or test run that never happened.
+- **Runs code.** Python, C, C++ and Java, to test code before she shows it to you. Each run is shown to you
+  and needs your OK. Every code block in the desktop window has its own Run button, with a box for the
+  program's input.
+- **Has her own window.** Maths is typeset, code is highlighted, and files can be dropped on the window to be
+  read. The terminal chat box is still there if you prefer it.
 - **Stays honest about what she doesn't know.** Unknown papers or methods get "I don't know this one" instead
   of a confident made-up summary. She then looks it up with her arXiv tool, or does that automatically before
   answering if you turn on `/arxiv auto on`.
@@ -38,25 +43,45 @@ the running notes, measurements and decisions are in [docs/DEVLOG.md](docs/DEVLO
 2. Python 3.11+:
    ```
    python -m venv .venv
-   .venv\Scripts\python -m pip install -e ".[dev]"          # add ,claude for /claude: ".[dev,claude]"
+   .venv\Scripts\python -m pip install -e ".[dev,gui]"      # add ,claude for /claude: ".[dev,gui,claude]"
    ```
-3. Chat:
+3. Optional, for C, C++ and Java: `.venv\Scripts\python scripts\setup_toolchains.py`. This puts a portable
+   GCC (WinLibs) and JDK 21 (Microsoft OpenJDK) into `tools/`, about 0.5 GB, checksum-verified. Python code
+   runs without it.
+4. Chat:
    ```
-   .venv\Scripts\alice tui                   # chat box (full-screen terminal UI); starts the model itself
+   .venv\Scripts\alice gui                   # desktop window; starts the model itself
+   .venv\Scripts\alice tui                   # chat box in the terminal
    .venv\Scripts\alice                       # line-based chat (same options)
    ```
 
 ## Use
 
 ```
+.venv\Scripts\alice gui --browser         # the same interface in your default browser instead of a window
 .venv\Scripts\alice tui --think           # thinking mode on (slower, best at maths and logic)
 .venv\Scripts\alice tui --workspace C:\code\proj   # let ALICE read files in that folder (default: current dir)
 .venv\Scripts\alice tui --offline         # no internet tools (arXiv)
 .venv\Scripts\alice tui --no-memory       # don't load or save long-term memory this session
 .venv\Scripts\alice tui --claude          # allow /claude this session (needs an Anthropic API key)
-.venv\Scripts\alice ingest papers\        # add PDFs / .md / .txt to your library
+.venv\Scripts\alice ingest papers\        # add PDF / Word / PowerPoint / .md / .txt files to your library
 .venv\Scripts\alice library               # list library documents (--remove ID, --retitle ID TITLE)
 ```
+
+The options work for all three front ends.
+
+**Desktop window.**
+- **Writing:** Enter sends, Shift+Enter starts a new line, Up/Down brings back earlier messages, and `/` lists
+  the commands.
+- **Stopping:** Esc stops a reply.
+- **Files:** drop a PDF, Word or PowerPoint file on the window, or use **Add file**.
+- **Code blocks:** each has **Copy** and **Run**. Run opens a box for the program's input and shows the output
+  underneath.
+- **When ALICE wants to run code herself,** the window shows you the code and its input first.
+- **Header:** **Thinking** switches step-by-step reasoning, **Ask Claude** (when Claude escalation is on)
+  passes the last question on, and **New chat** starts over.
+
+The window uses Windows' built-in WebView2. It only listens on 127.0.0.1, behind a random per-session token.
 
 **Chat box keys.**
 - Sending and editing: Enter sends, Shift+Enter starts a new line, Up/Down brings back earlier messages.
@@ -68,12 +93,15 @@ the running notes, measurements and decisions are in [docs/DEVLOG.md](docs/DEVLO
 Typing `/` shows the commands. Use Windows Terminal or the VS Code terminal (the old console window renders
 it poorly).
 
+![The ALICE chat box in the terminal, answering from a paper in the library, with sources](docs/assets/alice-tui.svg)
+
 **Commands (both chats).**
 
 | Command | What it does |
 |---|---|
 | `/think on\|off` | step-by-step reasoning |
 | `/arxiv auto on\|off` | automatic arXiv lookup for named papers |
+| `/read PATH [question]` | read a PDF, Word (`.docx`) or PowerPoint (`.pptx`) file; `/read off` closes it |
 | `/claude [question]` | pass the last question, or a new one, to Claude |
 | `/memory` | show what ALICE remembers about you |
 | `/remember TEXT` | add a note to long-term memory |
@@ -87,12 +115,28 @@ it poorly).
 **Tools.** ALICE always knows the current date and local time; that needs no tool.
 - `calculate`
 - `date_calc`: days until a deadline, the weekday of a date, a date N days from now
-- `run_python`, which asks before running
+- `run_code`: Python, C (C17), C++ (C++20) or Java, with optional input. It asks before every run, and has a
+  20 s limit and a minimal environment.
 - `system_info`: your OS, Python, CPU, RAM, GPU and VRAM in use, free disk, and versions of common dev tools
-- `list_files` / `read_file` / `search_text`: read-only, and only inside the workspace
+- `list_files` / `read_file` / `search_text` / `read_document` (PDF, Word, PowerPoint): read-only, and only
+  inside the workspace
 - `git`: read-only status, diff, log and show for the workspace repository
 - `arxiv_search` / `arxiv_paper`: use the internet
 - `search_library` / `list_library`: available once your library has documents
+
+### Your documents
+
+Give ALICE a PDF, Word or PowerPoint file in the middle of a chat. Use `/read C:\path\to\slides.pptx
+what's on the exam?`, or just drag the file into the terminal (or paste its path) and press Enter.
+- **Short documents** (up to about 14,000 characters) go into the conversation whole.
+- **Longer documents** stay open, and each question gets the most relevant pages or slides. ALICE says which
+  page or slide she used. `/read off` closes the document.
+- **What's read:** Word headings, lists and tables; PowerPoint slides in order, with speaker notes.
+- **Old formats:** binary `.doc` and `.ppt` files need saving as `.docx`, `.pptx` or PDF first. Scanned PDFs
+  need OCR.
+
+`alice ingest` also accepts `.docx` and `.pptx`, so documents you'll come back to can be added to the library
+permanently.
 
 ### Starter library
 
@@ -101,19 +145,38 @@ it poorly).
 | Subject | What's in it |
 |---|---|
 | AI and ML papers (44, from arXiv) | Optimisation tutorials, vision, NLP and Transformers, LLMs, generative models, RL, graphs, interpretability, fairness |
-| Maths textbooks | Calculus 1–3 and Introductory Statistics (OpenStax), MIT's *Mathematics for Computer Science* |
-| Physics textbooks | University Physics 1–3 (OpenStax) |
-| Chemistry and biology textbooks | Chemistry 2e and Biology 2e (OpenStax) |
-| CS textbooks | Introduction to Computer Science, Python, Data Science (OpenStax) |
+| Maths textbooks | Calculus 1–3, Introductory Statistics and Contemporary Mathematics (OpenStax); Interactive Linear Algebra (Georgia Tech); Linear Algebra (UC Davis); *Notes on Diffy Qs* (Lebl); MIT's *Mathematics for Computer Science* |
+| Programming textbooks | Introduction to Computer Science, Python and Data Science (OpenStax); *Think Python 2e*; *Beej's Guide to C* |
+| Physics and engineering textbooks | University Physics 1–3 (OpenStax); *Lessons in Electric Circuits* I–IV (DC, AC, semiconductors, digital); *Engineering Statics*; Additive Manufacturing Essentials (OpenStax) |
+| Chemistry and biology textbooks | Chemistry 2e, Organic Chemistry and Biology 2e (OpenStax) |
+| Writing and ethics | Writing Guide with Handbook and Business Ethics (OpenStax) |
 | Landmark open papers | LIGO, AlphaFold, neural message passing for chemistry, Tao's "What is good mathematics?" |
+
+The textbooks cover a typical first-year engineering programme:
+- linear algebra and differential equations
+- single and multivariable calculus
+- C and Python programming
+- the aptitude topics: counting, probability and logic
+- circuits and electronics
+- statics
+- engineering physics and chemistry
+
+Some courses have no open textbook that a script can download. These are environmental science, technical
+communication, the Constitution of India, Kannada and engineering graphics. Their hosts refuse automated
+downloads, or there is no open text at all. Download your own course material in a browser and add it with
+`alice ingest`.
 
 Every arXiv ID is checked against arXiv before downloading. The PDFs stay in `data/papers/`, which is
 gitignored: the licences (CC BY-NC-SA and similar) allow personal study, not redistribution.
 
+For books, section names come from the PDF's bookmarks. Sources then read, for example, "Chemistry 2e,
+p. 1077 (Appendix B Essential Mathematics: The Solution of Quadratic Equations)".
+
 ```
 .venv\Scripts\python scripts\build_library.py --dry-run     # check the list, download nothing
 .venv\Scripts\python scripts\build_library.py               # download + ingest (re-runs skip what's there)
-.venv\Scripts\python scripts\build_library.py --no-books    # papers only (the textbooks are 50-220 MB each)
+.venv\Scripts\python scripts\build_library.py --no-books    # papers only (the textbooks are 5-220 MB each)
+.venv\Scripts\python scripts\build_library.py --reingest-books   # also redo books ingested by older versions
 ```
 
 Stop ALICE before running it: embedding uses the GPU. The textbooks take a few minutes each.
@@ -177,8 +240,13 @@ Everything runs locally, with two optional exceptions:
 - the arXiv tools, which send the search text to arxiv.org
 - `/claude`, which sends what it showed you to Anthropic, and only after you say yes
 
-Your data stays in gitignored folders: sessions in `logs/transcripts/`, the library in `data/library/` and
-memory in `data/memory/`.
+The desktop window loads nothing from the internet, because its scripts and fonts are bundled.
+
+Your data stays in gitignored folders:
+- sessions in `logs/transcripts/`
+- the library in `data/library/`
+- memory in `data/memory/`
+- files dropped on the window in `data/uploads/`
 
 ## Tests and evaluations
 
@@ -193,7 +261,7 @@ set ALICE_LIBRARY=data\eval_library
 .venv\Scripts\python scripts\rag_eval.py --set famous             # retrieval + grounded answers (also: 2026, alias, calc)
 .venv\Scripts\python scripts\scale_bench.py                       # vector search at 10k-1M chunks
 .venv\Scripts\python scripts\calibrate_retrieval.py --set 2026    # thresholds for the embedding model
-.venv\Scripts\python scripts\readme_screenshot.py                 # the screenshot above, from the real model
+.venv\Scripts\python scripts\readme_screenshot.py                 # the chat-box screenshot, from the real model
 ```
 
 ## Contributing

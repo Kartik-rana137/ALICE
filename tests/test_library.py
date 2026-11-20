@@ -138,6 +138,40 @@ def test_split_sections_carries_heading_across_pages():
     assert parts2 == [("3.1 Pre-training BERT", "Task #1: Masked LM is described here.")]
 
 
+def test_book_sections_come_from_the_bookmarks():
+    """Textbooks: the bookmark's heading line splits the page; exercise numbers are not headings, and a
+    bookmark whose heading line isn't found takes the page from the top."""
+    from alice.library import _norm_heading, pdf_outline, split_outline_sections
+
+    class Mark:
+        def __init__(self, title, page):
+            self.title, self.page = title, page
+
+    class Reader:
+        outline = [Mark("Chapter 21 Nuclear Chemistry", 1), [Mark("21.6 Biological Effects of Radiation", 2),
+                                                             Mark("Exercises", 3)],
+                   Mark("Appendix B Essential Mathematics", 4), [Mark("The Solution of Quadratic Equations", 5)]]
+
+        @staticmethod
+        def get_destination_page_number(mark):
+            return mark.page
+
+    outline = pdf_outline(Reader)
+    assert [label for _, label, _ in outline] == [
+        "Chapter 21 Nuclear Chemistry", "21.6 Biological Effects of Radiation", "Chapter 21 Nuclear Chemistry: Exercises",
+        "Appendix B Essential Mathematics", "Appendix B Essential Mathematics: The Solution of Quadratic Equations"]
+    quad = ("Appendix B Essential Mathematics: The Solution of Quadratic Equations",
+            _norm_heading("The Solution of Quadratic Equations"))
+    page = "logarithm rules end here.\nThe Solution of Quadratic Equations\nThe roots of ax^2 + bx + c = 0 are"
+    parts, sec = split_outline_sections(page, "Appendix B Essential Mathematics: Exponential Arithmetic", [quad])
+    assert parts == [("Appendix B Essential Mathematics: Exponential Arithmetic", "logarithm rules end here."),
+                     (quad[0], "The roots of ax^2 + bx + c = 0 are")] and sec == quad[0]
+    parts, sec = split_outline_sections("4 The number of dollars in a bank account is a C variable.", sec, [])
+    assert parts == [(quad[0], "4 The number of dollars in a bank account is a C variable.")]
+    parts, _ = split_outline_sections("heading set as an image\nbody", "earlier", [quad])
+    assert parts == [(quad[0], "heading set as an image\nbody")]
+
+
 def test_section_headers_make_heading_words_searchable(tmp_path):
     (tmp_path / "bert.md").write_text("# BERT notes\n\n## Pre-training tasks\n\n"
                                       "Task one is the Masked LM objective. Task two predicts the next sentence.\n\n"

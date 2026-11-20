@@ -36,8 +36,31 @@ CLAIMED_TOOL_USE = re.compile(
 HELP = ("Commands: /think on|off       step-by-step reasoning (slower, better at maths/logic)\n"
         "          /arxiv auto on|off  look up named papers/methods on arXiv automatically\n"
         "          /claude [question]  ask Claude: re-check the last answer, or a new question (shows what is sent first)\n"
+        "          /read PATH [question]  read a PDF, Word or PowerPoint file (or paste / drag its path in)\n"
         "          /memory  what ALICE remembers about you   /remember TEXT   /forget ID|all\n"
         "          /tools   /reset (new conversation)   /help   /quit")
+
+# Documents the student hands over with /read (or by pasting / dragging a file path into the chat). Short ones
+# go into the conversation whole (~4k tokens of a 16k context); longer ones stay "open" and every question
+# gets its most relevant pages / slides (keyword search, documents.Excerpts) until /read off.
+ATTACH_FULL_CHARS = 14000
+DOC_EXCERPTS = 4
+DEFAULT_DOC_QUESTION = "Give me a short overview of this document."
+_PATH_MESSAGE = re.compile(r'^\s*(?:"([^"]+)"|\'([^\']+)\'|(\S+))\s*(.*)$', re.S)
+
+
+def file_in_message(text: str) -> tuple[str, str] | None:
+    """(path, rest) when a message starts with the path of a readable document - what dragging a file into
+    the terminal or pasting its path produces - else None."""
+    from .documents import LEGACY, SUPPORTED
+    m = _PATH_MESSAGE.match(text)
+    if not m:
+        return None
+    path = next(g for g in m.groups()[:3] if g)
+    if Path(path).suffix.lower() not in SUPPORTED | set(LEGACY) or not Path(path).expanduser().is_file():
+        return None
+    return path, m.group(4).strip()
+
 
 # Full abstracts (arXiv caps them at ~1,920 characters) for the top 2: with 3 results cut at 1,200
 # characters, the answer to "BQ-LoRA's WikiText-2 perplexity" was in the part that got cut off.
@@ -108,6 +131,7 @@ class CommandResult:
     reset: bool = False
     escalate: bool = False                 # front-end: prepare_escalation(), confirm, escalate()
     escalate_question: str | None = None   # /claude <question>
+    ask: str | None = None                 # front-end: send this as the student's message now (/read)
 
 
 class StreamFilter:
@@ -175,6 +199,11 @@ class ChatSession:
         self.session_id = _new_session_id()
         self._memory_section = ""
         self._pending_extra: list[str] = []         # one-off lines for the next turn note (/remember)
+        # documents (/read)
+        self.document = None                        # an open long document (documents.Document) or None
+        self._excerpts = None
+        self._doc_turns = 0
+        self._pending_document: str | None = None   # a short document's full text, sent with the next message
         if config.MEMORY_ENABLED if memory_notes is None else memory_notes:
             try:
                 self.memory = memory.MemoryStore(config.MEMORY_DIR)
@@ -408,7 +437,8 @@ class ChatSession:
     def command(self, text: str) -> CommandResult | None:
         """Handle a /command. Returns None if `text` is not a command."""
         if not text.startswith("/"):
-            return None
+            found = file_in_message(text)                 # a dragged / pasted document path
+            return self._read_command(*found) if found else None
         word = text.split()[0]
         if word in ("/quit", "/exit"):
             return CommandResult(quit=True)
@@ -433,6 +463,21 @@ class ChatSession:
             return CommandResult(msg, reset=True)
         if word in ("/memory", "/remember", "/forget"):
             return self._memory_command(text)
+        if word == "/read":
+            arg = text[len("/read"):].strip()
+            if not arg:
+                return CommandResult(f"(open document: {self.document.describe()}; /read off closes it)"
+                                     if self.document else
+                                     "usage: /read PATH [question] - or paste / drag a file path into the chat. "
+                                     "PDF, Word (.docx), PowerPoint (.pptx), .txt and .md")
+            if arg.lower() in ("off", "close", "none"):
+                closed, self.document, self._excerpts = self.document, None, None
+                return CommandResult(f"(closed {closed.title})" if closed else "(no document is open)")
+            found = file_in_message(arg)
+            if found:
+                return self._read_command(*found)
+            m = _PATH_MESSAGE.match(arg)                  # not a readable file: let read() say why
+            return self._read_command(next(g for g in m.groups()[:3] if g), m.group(4).strip())
         if word == "/claude":
             if not self.claude:
                 return CommandResult("(Claude escalation is off: set [claude] enabled = true in alice.toml, or "
@@ -457,6 +502,46 @@ class ChatSession:
             return CommandResult(f"(thinking {'on' if self.thinking else 'off'})")
         return CommandResult("unknown command. " + HELP)
 
+    def _read_command(self, path: str, question: str = "") -> CommandResult:
+        from . import documents
+        try:
+            doc = documents.read(path)
+        except documents.DocumentError as e:
+            return CommandResult(f"(can't read that: {e})")
+        if self.transcript:
+            self.transcript.event("document", title=doc.title, kind=doc.kind, units=len(doc.units), chars=doc.chars)
+        ask = question or DEFAULT_DOC_QUESTION
+        if doc.chars <= ATTACH_FULL_CHARS:
+            self.document, self._excerpts = None, None
+            self._pending_document = (f"{persona.ATTACH_MARKER.strip()} shared by the student: {doc.describe()}. Its "
+                                      f"full text follows; answer from it and say which {doc.unit_name} you mean.]\n"
+                                      + doc.text())
+            return CommandResult(f"(read {doc.describe()}; the whole text goes along with your question)", ask=ask)
+        self.document, self._excerpts, self._doc_turns = doc, documents.Excerpts(doc), 0
+        return CommandResult(f"(opened {doc.describe()}: too long to send whole, so each question gets its most "
+                             f"relevant {doc.unit_name}s. /read off closes it)", ask=ask)
+
+    def _document_context(self, text: str) -> str:
+        """Text from the open long document for this message: the best-matching excerpts, plus an outline and
+        the beginning on the first question (usually "give me an overview")."""
+        doc = self.document
+        pieces = self._excerpts.top(text, DOC_EXCERPTS)
+        first = self._doc_turns == 0
+        self._doc_turns += 1
+        if not pieces and not first:
+            return ""
+        parts = []
+        if first:
+            outline = [u.label for u in doc.units if u.heading]
+            if outline:
+                parts.append("Outline: " + "; ".join(outline)[:1500])
+            opening = doc.text(1, 2)[:3000]
+            parts.append(opening)
+        parts += [f"--- {label} ---\n{t}" for label, t in pieces if t not in "\n".join(parts)]
+        return (f"{persona.ATTACH_MARKER.strip()} excerpts from {doc.describe()} - the parts most relevant to this "
+                f"message; answer from them, say which {doc.unit_name} you used, and say so if they don't cover "
+                f"the question.]\n" + "\n\n".join(parts))
+
     def _save_after_reset(self, turns, summary, sid) -> None:
         update = self.save_memory(turns, summary, session_id=sid)
         if update and update.facts:
@@ -479,12 +564,17 @@ class ChatSession:
             convo.system["content"] = self._system_prompt()
         if self.transcript:
             self.transcript.user(text)
+        attachment, from_pending = "", False                 # a document from /read: it is the context
+        if self._pending_document:
+            attachment, self._pending_document, from_pending = self._pending_document, None, True
+        elif self.document is not None and not persona.is_casual(text):
+            attachment = self._document_context(text)
         prefetched, hits = [], []
-        if self.library:
+        if self.library and not attachment:
             prefetched, hits = self.library.prefetch(text)
             if prefetched and on_library:
                 on_library(sorted({h.where for h in hits}))
-        guard = not prefetched and persona.needs_reference_guard(text)
+        guard = not prefetched and not attachment and persona.needs_reference_guard(text)
         arxiv_query, looked_up = None, []
         if guard and self.auto_arxiv and "arxiv_search" in self.tool_names:
             if on_arxiv and (q := arxiv_lookup_query(text)):
@@ -496,8 +586,9 @@ class ChatSession:
         notes = [*extra, persona.CASUAL_NOTE] if casual else extra       # `extra` is restored if the turn fails
         # Per-reply instructions travel with the question (and stay in the history), so the system prompt and
         # everything before this turn are byte-identical to the last request and come from the server's cache.
-        convo.add_user(text + persona.turn_note(style, guard, arxiv_available="arxiv_search" in self.tool_names,
-                                                extra=notes, now=datetime.datetime.now().astimezone()))
+        convo.add_user(text + (f"\n\n{attachment}" if attachment else "")
+                       + persona.turn_note(style, guard, arxiv_available="arxiv_search" in self.tool_names,
+                                           extra=notes, now=datetime.datetime.now().astimezone()))
         convo.add(*prefetched, *looked_up)
         out = TurnOutcome(notices=self._take_pending_notices())
         try:
@@ -512,6 +603,8 @@ class ChatSession:
         if not out.kept:
             convo.pop_turn()                         # nothing usable came back: forget the question
             self._pending_extra = extra + self._pending_extra
+            if from_pending:
+                self._pending_document = attachment  # the shared document goes with the next try
             if out.interrupted:
                 out.notices.append(Notice("info", "(stopped; this exchange was not kept)"))
             return out

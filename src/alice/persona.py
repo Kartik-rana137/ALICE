@@ -200,7 +200,8 @@ TOOL_GUIDES = {
     "calculate": "- calculate: use it for EVERY calculation beyond trivial mental arithmetic, and report its "
                  "exact result. Call it FIRST, before writing any of your answer: never draft numbers and "
                  "then correct them, and never mention the tool call or a 'draft' in the reply.",
-    "run_python": "- run_python: use it to check code or numbers when running would catch a mistake. The "
+    "run_code": "- run_code: run Python, C, C++ or Java to check code or numbers when running would catch a "
+                "mistake. If the program reads input, pass it in stdin. The "
                   "student must approve every run, so do not run code just for show.",
     "arxiv_search": "- arxiv_search / arxiv_paper: whenever you mention or are asked about a specific paper "
                     "that is not in the student's library, look it up first and use the authors, year and "
@@ -212,7 +213,8 @@ TOOL_GUIDES = {
                  "on each message.",
     "system_info": "- system_info: the student's OS, Python, CPU, RAM, GPU/VRAM, disk and installed tool versions. "
                    "Check it before answering questions about their machine or setup instead of guessing.",
-    "read_file": "- list_files / read_file / search_text: read the student's code before commenting on it.",
+    "read_file": "- list_files / read_file / search_text: read the student's code before commenting on it. Use "
+                 "read_document for PDF, Word and PowerPoint files.",
     "git": "- git: read-only status / diff / log / show of the student's workspace repository; use it when they "
            "ask about their changes or recent commits.",
     "search_library": "- search_library / list_library: the student's own papers and notes. For any question "
@@ -240,12 +242,13 @@ def pick_sass(rng: random.Random | None = None) -> str:
     if r.random() < OPENER_SHARE:
         note = f"Open with one short, dry remark ({style}), then get into the content."
     else:
-        note = ("Start straight with the content, no opening quip; put your sass into one or two dry asides later "
-                f"in the reply ({style}).")
+        # "put your sass into dry asides" was taken literally once ("Dry aside: ..."): ask for it woven in.
+        note = ("Start straight with the content, no opening quip; let your sass show in one or two short dry "
+                f"remarks woven into the reply later on ({style}), never labelled as jokes or asides.")
     # The system prompt's "now and then, an ASCII emoticon" alone produced none in 16 replies; asking on ~30%
     # of messages makes it occasional, as intended.
     if r.random() < EMOTICON_SHARE:
-        note += f" Put one old-school ASCII emoticon ({r.choice(ASCII_EMOTICONS)}) in one of your asides."
+        note += f" End one of those remarks with an old-school ASCII emoticon ({r.choice(ASCII_EMOTICONS)})."
     return note
 
 
@@ -309,7 +312,12 @@ def turn_note(opener_style: str | None = None, guard: bool = False, arxiv_availa
     return f"\n\n{NOTE_PREFIX} {' '.join(parts)}]" if parts else ""
 
 
-def strip_note(text: str) -> str:
-    """The student's own words from a stored user message (without the turn note)."""
-    i = text.find("\n\n" + NOTE_PREFIX)
-    return text[:i] if i >= 0 else text
+ATTACH_MARKER = "\n\n[Document"           # document text ALICE attached to a message (/read)
+
+
+def strip_note(text: str, keep_documents: bool = False) -> str:
+    """The student's own words from a stored user message: without the turn note and, unless
+    `keep_documents`, without attached document text."""
+    cuts = [text.find("\n\n" + NOTE_PREFIX)] + ([] if keep_documents else [text.find(ATTACH_MARKER)])
+    cuts = [c for c in cuts if c >= 0]
+    return text[:min(cuts)] if cuts else text

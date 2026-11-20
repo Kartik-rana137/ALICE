@@ -49,7 +49,7 @@ class LibraryError(RuntimeError):
     """The library can't be used as configured (message tells the user what to do)."""
 REFERS_TO_LIBRARY = re.compile(r"\b(papers?|articles?|library|notes|according to|authors?|my (pdfs?|reading))\b",
                                re.I)
-SUPPORTED = {".pdf", ".md", ".txt"}
+SUPPORTED = {".pdf", ".md", ".txt", ".docx", ".pptx"}
 STOPWORDS = set("""a an and are as at be by does do for from how in is it of on or that the this to was
 what when where which who why with did can you your about paper papers""".split())
 
@@ -241,6 +241,72 @@ def split_sections(raw: str, section: str | None, markdown: bool = False
     return [(s, "\n".join(lines)) for s, lines in segments if "".join(lines).strip()], section
 
 
+# Books name their sections in the PDF outline (bookmarks). Guessing from numbered lines mislabels them:
+# textbook exercises ("4 The number of dollars in a bank account ...") read as headings, and appendices
+# kept the last chapter's section (the quadratic formula filed under "21.6 Biological Effects of
+# Radiation"). Papers keep the numbered-line headings ("3.2.3 Applications of ...") the evals were run on.
+BOOK_MIN_PAGES = 120                                     # the longest papers in the library run to 75 pages
+OUTLINE_MIN_ENTRIES = 8
+
+
+def _norm_heading(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def pdf_outline(reader) -> list[tuple[int, str, str]]:
+    """[(0-based page, label, normalised title)] for the PDF's bookmarks in reading order. A bookmark
+    without a number of its own is labelled with its parent: "Chapter 17 Electrochemistry: Exercises"."""
+    out: list[tuple[int, str, str]] = []
+
+    def walk(items, parent: str | None) -> None:
+        last = parent
+        for it in items:
+            if isinstance(it, list):                     # the children of the bookmark just before
+                walk(it, last)
+                continue
+            title = " ".join(str(getattr(it, "title", "") or "").split())
+            try:
+                page = reader.get_destination_page_number(it)
+            except Exception:
+                page = None
+            if not title or page is None or page < 0:
+                continue
+            label = title if parent is None or re.match(r"[\dA-Z]{1,3}(\.\d+)+\s", title) else f"{parent}: {title}"
+            out.append((page, label[:120], _norm_heading(title)))
+            last = title
+
+    try:
+        walk(reader.outline, None)
+    except Exception:
+        return []
+    return sorted(out, key=lambda e: e[0])               # stable: same-page entries keep their order
+
+
+def split_outline_sections(raw: str, section: str | None, starts: list[tuple[str, str]]
+                           ) -> tuple[list[tuple[str | None, str]], str | None]:
+    """Split one page at the heading lines of the bookmarks that begin on it ([(label, normalised
+    title)]). A bookmark whose heading line isn't found (title set differently, or on several lines)
+    still takes over from the top of its page."""
+    if not starts:
+        return ([(section, raw)] if raw.strip() else []), section
+    segments: list[tuple[str | None, list[str]]] = [(section, [])]
+    pending = list(starts)
+    for line in raw.splitlines():
+        n = _norm_heading(line)
+        hit = next((j for j, (_, t) in enumerate(pending)
+                    if n and (n == t or (len(n) >= 10 and (t.startswith(n) or n.startswith(t))))), None)
+        if hit is not None:
+            segments.append((pending[hit][0], []))
+            pending = pending[hit + 1:]
+        else:
+            segments[-1][1].append(line)
+    if len(segments) == 1:                               # no heading line found: the page is the bookmark's
+        segments = [(starts[-1][0], segments[0][1])]
+    elif pending:
+        segments.append((pending[-1][0], []))
+    return [(s, "\n".join(lines)) for s, lines in segments if "".join(lines).strip()], segments[-1][0]
+
+
 def extract(path: Path) -> tuple[str, list[tuple[int | None, str | None, str]], int]:
     """(title, [(page_number, section, cleaned_text), ...], n_pages). Page is None for text notes."""
     segments: list[tuple[int | None, str | None, str]] = []
@@ -249,6 +315,11 @@ def extract(path: Path) -> tuple[str, list[tuple[int | None, str | None, str]], 
         from pypdf import PdfReader
         logging.getLogger("pypdf").setLevel(logging.ERROR)    # font-encoding chatter, harmless for text
         reader = PdfReader(str(path))
+        outline = pdf_outline(reader) if len(reader.pages) >= BOOK_MIN_PAGES else []
+        starts: dict[int, list[tuple[str, str]]] = {}
+        if len(outline) >= OUTLINE_MIN_ENTRIES:
+            for page, label, norm in outline:
+                starts.setdefault(page, []).append((label, norm))
         first_raw, section = "", None
         for i, page in enumerate(reader.pages, 1):
             try:
@@ -257,10 +328,21 @@ def extract(path: Path) -> tuple[str, list[tuple[int | None, str | None, str]], 
                 raw = ""
             if i == 1:
                 first_raw = raw
-            parts, section = split_sections(raw, section)
+            if starts:
+                parts, section = split_outline_sections(raw, section, starts.get(i - 1, []))
+            else:
+                parts, section = split_sections(raw, section)
             segments += [(i, s, clean_text(t)) for s, t in parts]
         title = _pdf_title(reader) or _first_line_title(first_raw) or path.stem
         return title, segments, len(reader.pages)
+    if path.suffix.lower() in (".docx", ".pptx"):
+        from .documents import read
+        doc = read(path)
+        if doc.kind == "pptx":          # one segment per slide; the section names it ("Slide 3: Gradient descent")
+            return doc.title, [(None, u.label[0].upper() + u.label[1:], clean_text(u.text))
+                               for u in doc.units if u.text.strip()], len(doc.units)
+        parts, _ = split_sections("\n".join(u.text for u in doc.units), None, markdown=True)
+        return doc.title, [(None, s, clean_text(t)) for s, t in parts], 0
     text = path.read_text(encoding="utf-8", errors="replace")
     first = next((l.lstrip("# ").strip() for l in text.splitlines() if l.strip()), path.stem)
     parts, _ = split_sections(text, None, markdown=path.suffix.lower() == ".md")
@@ -456,10 +538,11 @@ class Library:
         self.index.invalidate()
         return "added", len(items), title
 
-    def rebuild(self, embedder: Embedder, section_headers: bool = True) -> list[tuple[str, str, int]]:
-        """Re-ingest every document from its original file with the current pipeline and embedding
-        model (keeps titles). [(title, status, chunks)]."""
-        docs = self.documents()
+    def rebuild(self, embedder: Embedder, section_headers: bool = True, doc_ids: set[int] | None = None,
+                on_done=None) -> list[tuple[str, str, int]]:
+        """Re-ingest every document (or just `doc_ids`) from its original file with the current pipeline
+        and embedding model (keeps titles). [(title, status, chunks)]."""
+        docs = [d for d in self.documents() if doc_ids is None or d[0] in doc_ids]
         self.set_meta("embed_model", self.embed_model)      # switching models: the old vectors all go
         self._bump_version()
         self.db.commit()
@@ -471,6 +554,8 @@ class Library:
             self.remove(doc_id)
             status, n, _ = self.add(Path(path), embedder, title=title, section_headers=section_headers)
             out.append((title, status, n))
+            if on_done:
+                on_done(title, status, n)
         return out
 
     def remove(self, doc_id: int) -> bool:

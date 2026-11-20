@@ -251,7 +251,7 @@ def test_arxiv_query_strategies_drop_stopwords_and_try_title_first():
 
 def test_calculate_explains_that_code_belongs_in_run_python():
     out = calc.calculate("import math; z = [2.0, 1.0]; z")
-    assert out.startswith("error:") and "run_python" in out
+    assert out.startswith("error:") and "run_code" in out
     assert calc.calculate("exp(2)/(exp(2)+exp(1)+exp(-1))").startswith("exp(2)")
 
 

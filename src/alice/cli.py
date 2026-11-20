@@ -35,8 +35,11 @@ def tool_summary(name: str, raw_args: str) -> str:
         args = json.loads(raw_args or "{}")
     except json.JSONDecodeError:
         args = raw_args
+    if name in ("run_python", "run_code"):
+        lang = args.get("language", "python") if isinstance(args, dict) else "python"
+        return f"({lang} code below)"
     shown = next(iter(args.values()), "") if isinstance(args, dict) and len(args) == 1 else args
-    return _short(shown if name != "run_python" else "(code below)")
+    return _short(shown)
 
 
 def chat_arguments(prog: str = "alice") -> argparse.ArgumentParser:
@@ -91,6 +94,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv and argv[0] == "tui":
         from . import tui
         return tui.main(argv[1:])
+    if argv and argv[0] == "gui":
+        from .gui import app
+        return app.main(argv[1:])
     args = chat_arguments().parse_args(argv)
     _reconfigure_utf8()
 
@@ -133,6 +139,13 @@ def main(argv: list[str] | None = None) -> int:
                     _escalate(session, cmd.escalate_question)
                     continue
                 print(cmd.message)
+                if cmd.ask:                               # /read (or a pasted file path): ask about it now
+                    print(f"you> {cmd.ask}")
+                    try:
+                        _respond(session, cmd.ask, args)
+                    except KeyboardInterrupt:
+                        session.convo.pop_turn()
+                        print("\n(stopped; this exchange was not kept)\n")
                 continue
             try:
                 _respond(session, text, args)
@@ -218,9 +231,12 @@ class _Printer:
 
 
 def _confirm(tool: Tool, args: dict) -> bool:
-    print(f"\n  ALICE wants to run {tool.name}:")
+    lang = args.get("language", "")
+    print(f"\n  ALICE wants to run {tool.name}" + (f" ({lang})" if lang else "") + ":")
     code = args.get("code", json.dumps(args, indent=2))
     print("  " + "\n  ".join(str(code).splitlines()))
+    if args.get("stdin"):
+        print("  with input:\n  " + "\n  ".join(str(args["stdin"]).splitlines()))
     try:
         return input("  Run it? [y/N] ").strip().lower() in ("y", "yes")
     except (EOFError, KeyboardInterrupt):

@@ -96,6 +96,26 @@ class Workspace:
         return "\n".join(hits) or "no matches"
 
 
+    def read_document(self, path: str, start: int = 1, end: int | None = None) -> str:
+        """PDF / Word / PowerPoint (and text) files, a page / slide / part range at a time."""
+        from ..documents import DocumentError, read
+        try:
+            doc = read(self.resolve(path))
+        except (PermissionError, DocumentError) as e:
+            return f"error: {e}"
+        n = len(doc.units)
+        start = max(1, min(int(start), n or 1))
+        if end is None:                                  # as many units as fit in one tool result
+            end, size = start, 0
+            while end <= n and size + len(doc.units[end - 1].text) <= 5500:
+                size += len(doc.units[end - 1].text)
+                end += 1
+            end = max(start, end - 1)
+        end = min(int(end), n)
+        more = f"\n... ({n - end} more {doc.unit_name}s; read again with start={end + 1})" if end < n else ""
+        return f"{doc.describe()}, {doc.unit_name}s {start}-{end}\n\n{doc.text(start, end)}{more}"
+
+
 def make_tools(root: str | Path) -> list[Tool]:
     ws = Workspace(root)
     path_prop = {"type": "string", "description": "path relative to the workspace root ('.' for the root)"}
@@ -109,6 +129,13 @@ def make_tools(root: str | Path) -> list[Tool]:
                                                "start_line": {"type": "integer"}, "end_line": {"type": "integer"}},
               "required": ["path"]},
              ws.read_file),
+        Tool("read_document", "Read a PDF, Word (.docx) or PowerPoint (.pptx) file from the workspace as text, "
+             "a range of pages / slides / parts at a time (labelled, so you can say where things are).",
+             {"type": "object", "properties": {"path": path_prop,
+                                               "start": {"type": "integer", "description": "first page/slide/part, default 1"},
+                                               "end": {"type": "integer", "description": "last one (default: as many as fit)"}},
+              "required": ["path"]},
+             ws.read_document),
         Tool("search_text", "Search workspace files for a regular expression; returns file:line: text.",
              {"type": "object", "properties": {"pattern": {"type": "string"}, "path": path_prop,
                                                "glob": {"type": "string", "description": "filename glob, e.g. '*.py'"}},

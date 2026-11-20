@@ -134,6 +134,8 @@ def main() -> int:
     ap.add_argument("--opener-repeats", type=int, default=1, help="run the opener prompts N times")
     ap.add_argument("--rescore", action="store_true", help="re-score the saved JSON, no model calls")
     ap.add_argument("--out", default="phase1_check.json")
+    ap.add_argument("--layout", choices=["note", "system"], default="note",
+                    help="where per-reply instructions go: appended to the question (current) or the system prompt (old)")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     out = config.ROOT / "benchmarks" / "results" / a.out
@@ -165,10 +167,14 @@ def main() -> int:
     results: dict = {name: {"numeric": [], "openers": []} for name in chosen}
 
     def system_for(base, tools):
+        """(system prompt, opener style, note appended to the question)"""
         if base is not None:
-            return base, None
+            return base, None, ""
         style = persona.pick_opener_style()
-        return persona.system_prompt(style, tools=["calculate"] if tools else ()), style
+        names = ["calculate"] if tools else ()
+        if a.layout == "system":                    # pre-2026-11-19: per-reply note inside the system prompt
+            return persona.system_prompt(style, tools=names), style, ""
+        return persona.system_prompt(tools=names), style, persona.turn_note(style)
 
     try:
         for name in chosen:
@@ -177,16 +183,16 @@ def main() -> int:
             if not a.openers_only:
                 for pid, prompt, _ in NUMERIC:
                     for i in range(a.samples):
-                        system, style = system_for(base, tools)
-                        r = ask(system, prompt, sampling, thinking, tools)
+                        system, style, note = system_for(base, tools)
+                        r = ask(system, prompt + note, sampling, thinking, tools)
                         r.update(id=pid, sample=i, opener_style=style)
                         score(r)
                         results[name]["numeric"].append(r)
                         print(f"{name:11} {pid:8} #{i} final={r['final']} correct={r['correct']} "
                               f"{r['seconds']}s [{r['finish']}]", flush=True)
             for prompt in OPENERS * a.opener_repeats:
-                system, style = system_for(base, tools)
-                r = ask(system, prompt, sampling, thinking, tools)
+                system, style, note = system_for(base, tools)
+                r = ask(system, prompt + note, sampling, thinking, tools)
                 r.update(prompt=prompt, opener=opener(r["reply"]), opener_style=style)
                 results[name]["openers"].append(r)
                 print(f"{name:11} opener: {r['opener'][:110]}", flush=True)

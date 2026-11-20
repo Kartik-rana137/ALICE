@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+claude = ["anthropic>=2.10"]   # optional escalation to Claude (/claude)
 
 [project.scripts]
 alice = "alice.cli:main"

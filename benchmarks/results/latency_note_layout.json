@@ -1,0 +1,133 @@
+{
+ "tag": "note_layout",
+ "profile": "default",
+ "model": "Qwen3.5-9B-Q4_K_M.gguf",
+ "extra_args": [],
+ "summary": {
+  "ttft_s": 8.88,
+  "total_s": 12.2,
+  "prompt_n": 1353.5,
+  "prompt_ms": 8652.0,
+  "cache_n": 3020.0,
+  "gen_tps": 37.7,
+  "server_start_s": 8.7,
+  "warmup_wait_s": 12.4,
+  "ttft_total_s": 55.9,
+  "prompt_eval_total_s": 50.6
+ },
+ "turns": [
+  {
+   "rep": 0,
+   "turn": 0,
+   "question": "What is the difference between a process and a thread? Keep it short.",
+   "ttft_s": 0.69,
+   "total_s": 6.1,
+   "prompt_n": 60,
+   "prompt_ms": 479,
+   "cache_n": 2031,
+   "gen_n": 212,
+   "gen_tps": 38.9,
+   "rounds": 1,
+   "prefetch_s": 0.19,
+   "tools": [],
+   "notices": [],
+   "reply": "Threads are like workers in the same room sharing tools; processes are separate rooms with their own toolboxes. Processes have independent memory and CPU time, while threads within a process share memory but compete for CPU slices. The OS schedules threads more granularly than whole processes, making multithreaded apps faster on multi-core systems, though they're trickier to debug because one thread's crash can take down the whole process.\n\n**Key differences:**\n- **Memory isolation**: Processes are isolated; threads share address space\n- **Creation overhead**: Processes cost more to create (memory copy) than threads\n- **Communication**: Inter-process communication needs IPC (pipes, sockets); threads use shared variables\n- **Failure impact**: Process crash doesn't affect others; thread crash can kill the entire process\n\nCommon pitfall: Assuming threads are always faster\u2014context switching overhead and false sharing can negate gains. Also, race conditions in shared memory make debugging a nightmare.\n\nWhat happens to a program's behavior if you accidentally access another thread's stack pointer?"
+  },
+  {
+   "rep": 0,
+   "turn": 1,
+   "question": "What learning rate schedule does the Transformer paper use?",
+   "ttft_s": 8.67,
+   "total_s": 13.0,
+   "prompt_n": 1353,
+   "prompt_ms": 8454,
+   "cache_n": 2087,
+   "gen_n": 166,
+   "gen_tps": 38.2,
+   "rounds": 1,
+   "prefetch_s": 0.16,
+   "tools": [],
+   "notices": [
+    "Retrieved from your library (not cited inline): Attention Is All You Need, p. 11 (7 Conclusion); Attention Is All You Need, p. 7 (5.2 Hardware and Schedule); Attention Is All You Need, p. 7 (5.3 Optimizer); Attention Is All You Need, p. 8 (5.4 Regularization)"
+   ],
+   "reply": "The Transformer paper uses a **warmup + decay** schedule:  \n- Linearly increase learning rate for the first `warmup_steps` (4000 steps)  \n- Then decrease as inverse square root of step number  \n\nFormula:  \n```\nlrate = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5))\n```\n\nSo it starts at `d_model^(-0.5) * warmup_steps^(-0.5)` (peak), then decays as `step_num^(-0.5)`.\n\nThis is standard for transformers: warmup stabilizes early training, decay helps convergence later.\n\nWhat\u2019s the peak learning rate if `d_model = 512`?"
+  },
+  {
+   "rep": 0,
+   "turn": 2,
+   "question": "And how many warmup steps did they use?",
+   "ttft_s": 9.08,
+   "total_s": 11.4,
+   "prompt_n": 1354,
+   "prompt_ms": 8850,
+   "cache_n": 2300,
+   "gen_n": 89,
+   "gen_tps": 38.3,
+   "rounds": 1,
+   "prefetch_s": 0.18,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "They used **4000 warmup steps** [L1].\n\nThat\u2019s a nice round number that lets the model \u201cwarm up\u201d before the learning rate starts its graceful decay. Too few and you risk unstable early training; too many and you waste compute on a schedule that does nothing for most of training.\n\nWhat happens to the peak learning rate if you double `warmup_steps` but keep everything else the same?"
+  },
+  {
+   "rep": 0,
+   "turn": 3,
+   "question": "With d_model = 512 and that many warmup steps, what is the learning rate at step 8000?",
+   "ttft_s": 17.9,
+   "total_s": 24.5,
+   "prompt_n": 2072,
+   "prompt_ms": 13688,
+   "cache_n": 15133,
+   "gen_n": 386,
+   "gen_tps": 37.2,
+   "rounds": 3,
+   "prefetch_s": 0.27,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "notices": [
+    "Retrieved from your library (not cited inline): Attention Is All You Need, p. 7 (5.3 Optimizer); BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, p. 13 (A.2 Pre-training Procedure); LoRA: Low-Rank Adaptation of Large Language Models, p. 18 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 19 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 20 (D.4 GPT-3)"
+   ],
+   "reply": "With `d_model = 512` and `warmup_steps = 4000`, the learning rate at step 8000 is:\n\n**0.015625** (or ~1.56%).\n\nBreakdown:\n- Peak LR at step 4000: `512^(-0.5) * min(4000^(-0.5), 4000 * 4000^(-1.5))` = `512^(-0.5)` \u2248 0.0442\n- At step 8000 (past warmup): `512^(-0.5) * (8000/4000)^(-1.5)` = `0.0442 / 2^(1.5)` \u2248 0.0156\n\nThe decay kicks in after step 4000, so by step 8000 it\u2019s already down to ~35% of its peak.\n\nWhat would the LR be at step 16000?",
+   "expected": 0.000494,
+   "correct": false
+  },
+  {
+   "rep": 0,
+   "turn": 4,
+   "question": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.",
+   "ttft_s": 16.41,
+   "total_s": 26.4,
+   "prompt_n": 2408,
+   "prompt_ms": 16127,
+   "cache_n": 3740,
+   "gen_n": 365,
+   "gen_tps": 36.7,
+   "rounds": 1,
+   "prefetch_s": 0.26,
+   "tools": [],
+   "notices": [],
+   "reply": "Palindrome checking is like comparing a word to its mirror image\u2014just hope you\u2019re not holding up too many reflections.\n\nHere\u2019s a clean implementation that ignores case and spaces:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    # Normalize: lowercase + remove non-alphanumeric\n    cleaned = ''.join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n```\n\nWalkthrough:\n1. **Normalize**: Convert to lowercase and keep only alphanumeric characters. This handles case differences (`\"A\"` vs `\"a\"`) and ignores punctuation/spaces.\n2. **Compare**: A string is a palindrome if it reads the same forwards and backwards\u2014`cleaned == cleaned[::-1]`.\n\nExample:  \n`is_palindrome(\"Racecar!\")` \u2192 `\"racecar\"` \u2192 `True`  \n`is_palindrome(\"No 'x' in Nixon\")` \u2192 `\"nixonin\"` \u2192 `False` (wait, that\u2019s wrong\u2014should be `\"nonixinin\"`? Let me fix the example.)\n\nCorrected example:  \n`is_palindrome(\"No 'x' in Nixon\")` \u2192 `\"nonixinin\"` \u2192 actually `\"no x in nixon\"` \u2192 `\"noxinnixon\"` \u2192 wait, let me just compute it properly.\n\nActually, better examples:\n- `is_palindrome(\"A man, a plan, a canal: Panama\")` \u2192 `\"amanaplanacanalpanama\"` \u2192 `True`\n- `is_palindrome(\"Was it a car or a cat I saw?\")` \u2192 `\"wasitacaroracatisaw\"` \u2192 `True`\n\nWhat does this return for `\"Madam, in Eden, I'm Adam\"`?"
+  },
+  {
+   "rep": 0,
+   "turn": 5,
+   "question": "Now make it ignore punctuation too.",
+   "ttft_s": 3.18,
+   "total_s": 8.5,
+   "prompt_n": 415,
+   "prompt_ms": 2960,
+   "cache_n": 6144,
+   "gen_n": 194,
+   "gen_tps": 36.6,
+   "rounds": 1,
+   "prefetch_s": 0.19,
+   "tools": [],
+   "notices": [],
+   "reply": "Punctuation is just noise trying to ruin the party\u2014time to silence it with a filter.\n\nYour current function already ignores spaces and normalizes case, but to handle punctuation properly (e.g., `\"A man, a plan, a canal: Panama\"`), you need to keep only alphanumeric characters. Here's the updated version:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    # Normalize: lowercase + keep only alphanumeric\n    cleaned = ''.join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n```\n\nKey change: `ch.isalnum()` filters out punctuation, spaces, and other non-letter/number characters. This ensures `\"A man, a plan, a canal: Panama\"` becomes `\"amanaplanacanalpanama\"`, which is a palindrome.\n\nWhat does this return for `\"Was it a car or a cat I saw?\"`?"
+  }
+ ]
+}

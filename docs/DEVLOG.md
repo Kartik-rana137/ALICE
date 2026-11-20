@@ -596,3 +596,90 @@ New: a full-screen chat box, `alice tui` (same options as `alice`).
 ### Next
 - [ ] Cite arXiv results as checkable labels too (e.g. [A1]) so the citation/support checks cover them, not only library passages.
 - [ ] Multiple seeds on the answer evals (single runs so far).
+
+---
+
+## 2026-11-19/20 - Round 4: response time, correctness, long-term memory, Claude escalation, chat box
+
+Goals: faster replies without less correct answers, long-term memory, a framework for handing questions to Claude when the local model is too weak, a friendlier chat box, and README visuals. The repo is now public; hardware is described generically from here on.
+
+### 1. Response time: median time to first token 20.7 s -> 0.8 s
+New benchmark `scripts/latency_bench.py`: a fixed 6-turn conversation through the real pipeline (concept question, two library questions, a calculation, code + follow-up; 5-paper eval library). Per turn it records time to first visible token (TTFT), prompt tokens evaluated vs. reused from llama-server's cache, and generation speed.
+
+| Change (cumulative) | median TTFT | TTFT over 6 turns | prompt tokens evaluated (median turn) |
+|---|---|---|---|
+| baseline | 20.7 s | 137.7 s | 3,216 |
+| per-reply notes out of the system prompt + warm-up | 8.9 s | 55.9 s | 1,354 |
+| + chat-template fix | **0.8 s** | **28.3 s** | **60** |
+| + checkpoint spacing 256 (dropped) | 0.8 s | 23.1 s | 60 |
+| + ngram speculative decoding (dropped) | 0.9 s | 46.1 s | 60 (gen 36 tok/s, no gain) |
+
+- **Snag 1, the per-turn system prompt.** The random opener style and the reference guard sat at the end of the system prompt, so every request differed there and the server's prefix cache was invalid from that point on: only the first 1,566 tokens were reused, 1.8k-5.5k re-evaluated per turn at ~150 tok/s. (Qwen3.5's template also puts the tool schemas *before* the system prompt.) Fix: a byte-stable system prompt; per-reply notes are appended to the student's message as `[Note from ALICE's system, not from the student: ...]` and stay in the history. A separate system message is not possible: the template raises "System message must be at the beginning".
+- **Snag 2, hybrid architecture.** Qwen3.5 (`qwen35`) mixes recurrent Gated-DeltaNet layers with full attention every few layers, so a cached prompt can only be resumed from saved state checkpoints, and the server spaces them >= 8,192 tokens apart by default. Suspected, measured, no effect (spacing 256 within noise) - not the cause.
+- **Snag 3, the real cause: the chat template.** Assistant messages after the last user message are rendered with an empty `<think>\n\n</think>\n\n` block, earlier ones without it. So as soon as the next question arrived, the previous turn (synthetic library-search call, passages, tool rounds, reply) was rendered differently from what the server had cached, and all of it was re-evaluated (1.3k-2.3k tokens, every turn). Fix: `templates/qwen3.5-stable-history.jinja`, the model's own template with one condition changed (keep the empty block when there is no stored reasoning - exactly what the model generated in direct mode), set as the default profile's `chat_template`. A follow-up question now evaluates ~55 tokens.
+- **Warm-up:** the tools + system prompt (~2k tokens) are evaluated in the background at startup while the student types: first question 14.9 s -> 0.7 s to the first token.
+- Remaining waits: library turns read ~1.1k tokens of new passages (~7 s - that is real reading, not waste) and calculator turns with several tool rounds (12-35 s).
+- Dropped after measuring: tighter checkpoints (no effect), draft-free ngram speculation (no gain; this GGUF has no MTP heads for `draft-mtp`).
+
+### 2. Correctness: formulas taken from memory instead of the passage
+- In 1 of 5 benchmark runs the calculation turn ("LR at step 8000 with the Transformer schedule") used a misremembered formula, (step/warmup)^-1.5, and answered 0.0156 instead of 0.000494 - although the retrieved passage had the right one. The calculator check passed: it only checks that the result was copied correctly, not the formula.
+- Tried: a rule in the passages note to quote a formula/setting/number exactly as the passage gives it (with its label) before using it. New eval set `--set calc` to measure it: 5 grounded calculations (two LR-schedule steps, Adam bias correction, LoRA parameter count, ResNet depth; answers worked out by hand), `--repeat 4`.
+
+| calc set, 20 answers each | all correct | cited a label |
+|---|---|---|
+| with the quote rule | 18/20 | 12/20 |
+| without (shipped) | **19/20** | 11/20 |
+
+  No measurable effect, so the rule was **dropped** (no prompt text without evidence). The misses: the LR at step 2000 (inside warmup) computed with the wrong branch of the `min`, once with 4000^-1.5 done in the head as 0.000078 (it is 3.95e-6) instead of with the calculator; the LR at step 8000 once with a misremembered formula. None of these trips a current check (the calculator check only sees copying errors). Next: flag numeric answers whose arithmetic never went through the calculator.
+- Persona v3.3 = the v3.2 rules in the new layout. The evals (`rag_eval.py`, `phase1_check.py`) build prompts the new way by default; `--layout system` reproduces the old one.
+
+Did moving the per-reply notes out of the system prompt change behaviour? Same evals, old layout (v3.2) vs new (v3.3), single runs:
+
+| eval | v3.2 | v3.3 |
+|---|---|---|
+| 2026 papers, library: all facts | 12/13 | 12/13 |
+| 2026 papers, library: cited a label | 12/13 | **13/13** |
+| 2026 papers, closed-book: admits not knowing | 9/13 | **11/13** |
+| nickname questions: all facts / cited | 6/6 / 4/6 | 6/6 / **6/6** |
+| numeric check with calculator | 13/15 | 14/15 |
+| openers starting "Another"/"Oh" | 0/16 | 0/8 |
+| condescending replies | 0 | 0 |
+
+No regression; citations and honesty slightly better (single runs, so "no worse" is the safe reading). Final latency run with all of this round's code: median TTFT 0.9 s, follow-up questions evaluate ~55 new prompt tokens (`benchmarks/results/latency_final.json`).
+
+### 3. Long-term memory (Phase 5, brought forward)
+- **Compaction within a session.** When the history fills 75 % of the context budget, the oldest turns (all but the newest 2) are summarised by the local model and the summary sits after the system prompt, instead of old turns silently falling out of the window. It runs in the background right after a reply (summary + re-warming the new prompt, ~17-20 s), so it overlaps reading time; a question asked sooner waits for it.
+- **Memory across sessions** (`memory.py`, `data/memory/memory.db`, local only): "fact" notes (what the student said about themselves) and "session" notes (what a conversation covered). Written at compaction, on /reset and when the chat closes; the newest 25 facts and 3 session summaries go into the system prompt at the next start (fixed for the session, so the prompt cache stays valid). `/memory`, `/remember`, `/forget ID|all`, `--no-memory`.
+- **Against invented memories:** the summariser runs with a JSON schema (llama-server grammar, so it always parses) at temperature 0.2, and a candidate fact is kept only if at least half of its content words (crudely stemmed) occur in the student's own messages; near-duplicates are skipped.
+- New eval `scripts/memory_eval.py`: a scripted student mentions 6 facts in passing over 6 turns, compaction is forced early, then a fresh session is asked two questions.
+
+| run | planted facts stored | stored but never said | next session: "What do you remember about me?" |
+|---|---|---|---|
+| v1 | 5/6 | 0 | course, Rust project, exam date |
+| v3 (after the fixes below) | 4/6 (the other 2 are in the session summary) | 0 | all 6 |
+
+- Snags: (a) asked to merge an earlier summary into the new one, the 9B dropped most of the earlier part -> the model now summarises only the new part and the code joins them (oldest sentences dropped past 1,800 characters); (b) with a long summary the history stayed above the threshold and every later turn compacted again -> compaction now needs to free at least a third of the threshold; (c) the summariser read the `[...]` that marks a shortened reply as "the conversation was cut off" -> explicit marker; (d) a declined code run was parroted as "The user declined the tool execution" -> the tool message now says not to mention it.
+- Limits: single runs (recall varies run to run); notes are not searched yet - all of the newest go into the prompt, which needs retrieval once there are ~100+; facts can be added and deleted but not updated when they change.
+
+### 4. Claude escalation framework (`claude.py`)
+- **When:** after every local answer the post-checks produce flags - citations never retrieved, numbers not in the cited passages, calculator mismatch, claimed tool use, tool loop, "I don't know this paper". Any flag -> "This answer may be unreliable: <reasons>. /claude asks Claude". The student can also use `/claude` (Ctrl+G) any time or `/claude <question>` for a new question. Nothing is sent automatically.
+- **What is sent:** the escalated question (turn notes stripped), the passages and tool results of that turn, the flagged local answer with the reasons, and up to 4 earlier turns as context; never memory notes. Workspace/home paths, e-mail addresses and key-like strings are redacted. A preview shows exactly this plus an estimated cost (~3.3 characters per token; typical answer incl. adaptive thinking ~3k output tokens) and asks before sending.
+- **How:** official `anthropic` SDK (optional extra `.[claude]`), streaming, `claude-opus-5-5`, adaptive thinking, `effort = "high"` (Opus 5.5 defaults to medium), the server-side refusal fallback (`fallbacks="default"`), readable errors for bad key / unknown model / rate limit / offline. The answer replaces the flagged local answer in the history (or is added as a new turn), so ALICE builds on the right one; its [L] citations go through the same citation check.
+- **Cost control:** every call is logged to `logs/claude_usage.jsonl` (tokens, cost, reasons, never message text); a monthly budget ($5 default) is enforced from that log before sending.
+- Status: 13 tests against a fake SDK client (parameters, streaming, refusal, cancel, budget, redaction, request building, session integration). Not yet run against the real API: no key on this machine.
+
+### 5. Chat box
+- Status line says what is happening and for how long ("reading 5 passages from your library... 3 s", "thinking", "using calculate", "writing", "compacting...").
+- Up/Down recall earlier messages; typing "/" lists the commands with a one-line description; Ctrl+O / `/copy` copies the last answer, `/copy code` its last code block; PgUp/PgDn scroll the conversation from the input box; new output no longer yanks the view down while you are reading further up.
+- Welcome card with what is available (tools, library size, memory notes, Claude) and the keys; dialog for /claude with the exact payload and cost; Claude's answers in their own bubble.
+- **Maths in a terminal:** the 9B writes LaTeX in about half of its numeric answers (13/23 replies in the numeric check), which the chat box showed as raw `\[ \text{lrate} = ... \]`. A system-prompt rule ("plain-text maths, never LaTeX") cut that to 6/23 but numeric accuracy came out 11/15 in two runs (vs 14/15 and 13/15 without it; in the first run 3 of the 4 misses were correct totals the scorer missed because the final answer wasn't bold, the second had real errors such as 101,870), so the rule was dropped. Instead the chat box converts LaTeX at display time (`render.py`: `\frac`, `\text`, Greek letters, super/subscripts, `\cdot` ...); the stored reply and every check keep the original text.
+- README: GitHub social-preview banner (`docs/assets/social-preview.png`, rendered from `banner.html`; upload it in the repo settings) and a screenshot of the real chat box answering with the real model (`scripts/readme_screenshot.py`, nothing staged).
+
+### Tests
+149 passing (memory store/grounding/compaction/commands with a faked summariser, escalation with a fake SDK client, chat box history/hints/copy/escalation dialog, LaTeX display conversion).
+
+### Next
+- [ ] Run `/claude` for real on the questions the 9B fails (the calc set's misses, 2026 closed-book) and measure fixed-vs-cost: the start of the routing-policy thesis angle.
+- [ ] Memory: search notes by embedding once they grow; update facts that change; memory eval with several seeds.
+- [ ] Library turns still spend ~7 s reading passages: measure accuracy vs. fewer/shorter passages.
+- [ ] Flag numeric answers whose arithmetic never went through the calculator (the calc-set misses) - a natural trigger for re-asking with the calculator or for /claude.

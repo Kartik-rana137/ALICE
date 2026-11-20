@@ -1,0 +1,139 @@
+{
+ "tag": "note_template_ngram",
+ "profile": "default",
+ "model": "Qwen3.5-9B-Q4_K_M.gguf",
+ "extra_args": [
+  "--chat-template-file",
+  "templates/qwen3.5-stable-history.jinja",
+  "--spec-type",
+  "ngram-mod"
+ ],
+ "summary": {
+  "ttft_s": 0.85,
+  "total_s": 5.8,
+  "prompt_n": 59.5,
+  "prompt_ms": 562.5,
+  "cache_n": 5157.0,
+  "gen_tps": 36.25,
+  "server_start_s": 8.6,
+  "warmup_wait_s": 12.6,
+  "ttft_total_s": 46.1,
+  "prompt_eval_total_s": 22.8
+ },
+ "turns": [
+  {
+   "rep": 0,
+   "turn": 0,
+   "question": "What is the difference between a process and a thread? Keep it short.",
+   "ttft_s": 0.76,
+   "total_s": 6.7,
+   "prompt_n": 60,
+   "prompt_ms": 492,
+   "cache_n": 2031,
+   "gen_n": 225,
+   "gen_tps": 37.8,
+   "rounds": 1,
+   "prefetch_s": 0.24,
+   "tools": [],
+   "notices": [],
+   "reply": "Processes are like separate houses with their own kitchens; threads are chefs working in the same kitchen. A process owns memory and resources and has its own address space, while a thread shares that address space with other threads in the same process. This means threads can communicate quickly via shared variables, but they're also prone to race conditions if not carefully synchronized. Processes are heavier to create and switch between, but they provide better isolation\u2014crash one process and the others keep running.\n\nKey differences:\n- **Memory**: Processes have isolated memory; threads share the same address space.\n- **Isolation**: Processes are more secure and stable; a crash in one doesn't affect others.\n- **Performance**: Threads are faster to create and switch because they share resources.\n- **Communication**: Threads use shared memory (faster but needs locking); processes use IPC like pipes or sockets (slower but safer).\n\n**Final takeaway**: Use processes for isolation and stability; use threads for speed and simplicity when sharing data is needed.\n\nWhat\u2019s an example of a program where you\u2019d choose processes over threads?"
+  },
+  {
+   "rep": 0,
+   "turn": 1,
+   "question": "What learning rate schedule does the Transformer paper use?",
+   "ttft_s": 7.43,
+   "total_s": 12.8,
+   "prompt_n": 1142,
+   "prompt_ms": 7238,
+   "cache_n": 2315,
+   "gen_n": 198,
+   "gen_tps": 36.9,
+   "rounds": 1,
+   "prefetch_s": 0.17,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "The Transformer paper uses a **warmup with decay** schedule for the learning rate:\n\n- **Formula**: `lrate = d^(-0.5) * model * min(step_num^(-0.5), step_num / warmup_steps^(-1.5))` [L1]\n- **Warmup**: Linearly increases the learning rate for the first 4,000 steps [L1].\n- **Decay**: After warmup, it decreases proportionally to the inverse square root of the step number [L1].\n\nIn practice:\n- `d_model` is the model dimension (512 for base, 1024 for big).\n- The learning rate starts low, rises linearly during warmup, then decays as `step^(-0.5)`.\n\nThis schedule helps stabilize early training and improves convergence.\n\nWhat\u2019s a downside of this schedule compared to constant learning rates?"
+  },
+  {
+   "rep": 0,
+   "turn": 2,
+   "question": "And how many warmup steps did they use?",
+   "ttft_s": 0.78,
+   "total_s": 2.8,
+   "prompt_n": 57,
+   "prompt_ms": 543,
+   "cache_n": 3654,
+   "gen_n": 77,
+   "gen_tps": 37.3,
+   "rounds": 1,
+   "prefetch_s": 0.22,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "They used **4,000 warmup steps** [L1].\n\nThe learning rate increases linearly for those first 4k steps, then decays as the inverse square root of the step number. This helps stabilize training early on while still allowing convergence over the long run.\n\nWhat would happen to the peak learning rate if you doubled `d_model`?"
+  },
+  {
+   "rep": 0,
+   "turn": 3,
+   "question": "With d_model = 512 and that many warmup steps, what is the learning rate at step 8000?",
+   "ttft_s": 35.53,
+   "total_s": 40.9,
+   "prompt_n": 1984,
+   "prompt_ms": 13459,
+   "cache_n": 22418,
+   "gen_n": 893,
+   "gen_tps": 33.1,
+   "rounds": 4,
+   "prefetch_s": 0.29,
+   "tools": [
+    "calculate",
+    "calculate",
+    "run_python"
+   ],
+   "notices": [
+    "Retrieved from your library (not cited inline): Attention Is All You Need, p. 7 (5.3 Optimizer); BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, p. 13 (A.2 Pre-training Procedure); LoRA: Low-Rank Adaptation of Large Language Models, p. 18 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 19 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 20 (D.4 GPT-3)"
+   ],
+   "reply": "At step 8,000 (after warmup), the learning rate is in the decay phase:\n\n- `term1 = 8000^(-0.5) \u2248 0.0112`\n- `term2 = 8000 * 4000^(-1.5) \u2248 0.0395`\n- Min term = 0.0112 (the decay dominates)\n- `lrate = 512^(-0.5) * 0.0112 \u2248 0.0443 * 0.0112 \u2248 0.0005`\n\n**Learning rate at step 8,000: ~5 \u00d7 10\u207b\u2074**\n\nWhat would the peak learning rate be (at step 4,000)?",
+   "expected": 0.000494,
+   "correct": false
+  },
+  {
+   "rep": 0,
+   "turn": 4,
+   "question": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.",
+   "ttft_s": 0.93,
+   "total_s": 4.7,
+   "prompt_n": 59,
+   "prompt_ms": 582,
+   "cache_n": 6660,
+   "gen_n": 134,
+   "gen_tps": 35.6,
+   "rounds": 1,
+   "prefetch_s": 0.29,
+   "tools": [],
+   "notices": [],
+   "reply": "Here\u2019s a straightforward implementation:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    \"\"\"Check if s is a palindrome ignoring case and spaces.\"\"\"\n    cleaned = ''.join(ch.lower() for ch in s if not ch.isspace())\n    return cleaned == cleaned[::-1]\n```\n\nWalkthrough:\n1. Build `cleaned` by keeping only non-space characters and lowercasing them.\n2. Compare `cleaned` with its reverse (`cleaned[::-1]`).\n\nCheck your understanding: What does `is_palindrome(\"Was it a car or a cat I saw?\")` return?"
+  },
+  {
+   "rep": 0,
+   "turn": 5,
+   "question": "Now make it ignore punctuation too.",
+   "ttft_s": 0.7,
+   "total_s": 4.9,
+   "prompt_n": 51,
+   "prompt_ms": 458,
+   "cache_n": 6852,
+   "gen_n": 150,
+   "gen_tps": 35.4,
+   "rounds": 1,
+   "prefetch_s": 0.2,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah, now we\u2019re dealing with the full complexity of string cleaning\u2014like trying to untangle a knotted headphone cord in zero gravity.\n\n```python\nimport string\n\ndef is_palindrome(s: str) -> bool:\n    \"\"\"Check if s is a palindrome ignoring case, spaces, and punctuation.\"\"\"\n    cleaned = ''.join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n```\n\nKey change:\n- Replace the space filter with `ch.isalnum()` to keep only letters and digits.\n- This automatically excludes punctuation, symbols, and whitespace.\n\nWhat does `is_palindrome(\"A man, a plan, a canal: Panama!\")` return?"
+  }
+ ]
+}

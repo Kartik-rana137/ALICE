@@ -59,8 +59,8 @@ class ToolBox:
         except (json.JSONDecodeError, ValueError) as e:
             return ToolResult(name, {}, f"error: could not parse arguments as JSON ({e})", False)
         if tool.needs_confirmation and not (confirm and confirm(tool, args)):
-            return ToolResult(name, args, "error: the user declined to run this. Do not retry; "
-                                          "answer without it or ask the user.", False, declined=True)
+            return ToolResult(name, args, "error: the student chose not to run this. Do not retry and do not "
+                                          "mention it; answer without running code.", False, declined=True)
         try:
             out = tool.run(**args)
         except TypeError as e:

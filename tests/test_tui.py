@@ -10,7 +10,7 @@ from alice.config import Profile
 from alice.llm import Event
 from alice.session import CommandResult, Notice, TurnOutcome
 from alice.tools import Tool, ToolResult
-from alice.tui import AliceApp, ConfirmRun
+from alice.tui import AliceApp, ConfirmEscalation, ConfirmRun
 
 
 class FakeSession:
@@ -165,6 +165,123 @@ def test_multiline_paste_is_sent_as_one_message():
             await pilot.press("enter")
             assert await _wait(pilot, lambda: not app.busy)
             assert session.asked == ["First line\nSecond line\n\nFourth line"]
+    asyncio.run(scenario())
+
+
+class QuickSession(FakeSession):
+    """Answers immediately with a reply containing a code block."""
+
+    def ask(self, text, **callbacks):
+        self.asked.append(text)
+        reply = f"Answer to {text}:\n\n```python\nprint('{text}')\n```"
+        callbacks["on_event"](Event("content", reply))
+        callbacks["on_event"](Event("finish", "stop", {}))
+        return TurnOutcome(result=TurnResult(reply=reply, messages=[], finish="stop", seconds=0.1, gen_tokens=5,
+                                             timings={}))
+
+
+def test_up_and_down_walk_through_earlier_messages():
+    async def scenario():
+        session = QuickSession()
+        app = AliceApp(session)
+        async with app.run_test(size=(120, 40)) as pilot:
+            assert await _wait(pilot, lambda: app.ready)
+            prompt = app.query_one("#prompt", TextArea)
+            for q in ("first", "second"):
+                prompt.text = q
+                await pilot.press("enter")
+                assert await _wait(pilot, lambda: not app.busy)
+            prompt.text = "draft"
+            await pilot.press("up")
+            assert prompt.text == "second"
+            await pilot.press("up")
+            assert prompt.text == "first"
+            await pilot.press("down")
+            await pilot.press("down")
+            assert prompt.text == "draft"                         # back to what was being typed
+    asyncio.run(scenario())
+
+
+def test_command_hints_and_copying_the_last_answer():
+    async def scenario():
+        session = QuickSession()
+        app = AliceApp(session)
+        async with app.run_test(size=(120, 40)) as pilot:
+            assert await _wait(pilot, lambda: app.ready)
+            welcome = _texts(app)[-1]
+            assert welcome.startswith("ALICE is ready") and "Ctrl+O copy" in welcome
+            prompt = app.query_one("#prompt", TextArea)
+            prompt.text = "/me"
+            await pilot.pause(0.1)
+            hint = app.query_one("#hint", Static)
+            assert hint.display and str(hint.content).startswith("/memory")
+            prompt.text = "hello"
+            await pilot.pause(0.1)
+            assert not hint.display
+            await pilot.press("enter")
+            assert await _wait(pilot, lambda: not app.busy)
+            await pilot.press("ctrl+o")
+            assert app.clipboard.startswith("Answer to hello")
+            prompt.text = "/copy code"
+            await pilot.press("enter")
+            await pilot.pause(0.1)
+            assert app.clipboard == "print('hello')\n"
+    asyncio.run(scenario())
+
+
+class ClaudeSession(FakeSession):
+    """FakeSession with escalation: /claude goes through the confirmation dialog and streams a reply."""
+
+    def __init__(self):
+        super().__init__()
+        from alice.config import ClaudeSettings
+        self.claude = type("C", (), {})()
+        self.claude.settings = ClaudeSettings(enabled=True)
+        self.claude.ledger = type("L", (), {"month_total": lambda self: 0.12})()
+        self.escalated = []
+
+    def command(self, text):
+        if text.startswith("/claude"):
+            return CommandResult(escalate=True, escalate_question=text[len("/claude"):].strip() or None)
+        return super().command(text)
+
+    def prepare_escalation(self, question=None):
+        req = type("R", (), {})()
+        req.question = question
+        req.summary = lambda: "Sends to Anthropic (claude-opus-5-5): your question. ~900 tokens in; about $0.06."
+        req.preview = lambda: "=== user\n" + (question or "last question")
+        return req
+
+    def escalate(self, req, on_text=None, on_status=None, cancel=None):
+        from alice.session import EscalationOutcome
+        self.escalated.append(req.question)
+        on_status("thinking")
+        on_text("Here is a ")
+        on_text("proof.")
+        reply = type("Reply", (), {"text": "Here is a proof.", "interrupted": False})()
+        return EscalationOutcome(reply=reply, notices=[Notice("info", "(Claude · $0.031; $0.15 of $5.00)")])
+
+
+def test_asking_claude_shows_what_is_sent_and_streams_the_answer():
+    async def scenario():
+        session = ClaudeSession()
+        app = AliceApp(session)
+        async with app.run_test(size=(120, 40)) as pilot:
+            assert await _wait(pilot, lambda: app.ready)
+            prompt = app.query_one("#prompt", TextArea)
+            prompt.text = "/claude Prove the pumping lemma"
+            await pilot.press("enter")
+            assert await _wait(pilot, lambda: isinstance(app.screen, ConfirmEscalation))
+            assert "~900 tokens" in app.screen.summary and "Prove the pumping lemma" in app.screen.preview
+            await pilot.press("n")                                    # cancel: nothing is sent
+            assert await _wait(pilot, lambda: "(not sent to Claude)" in _texts(app))
+            assert session.escalated == []
+            await pilot.press("ctrl+g")                               # escalate the last answer
+            assert await _wait(pilot, lambda: isinstance(app.screen, ConfirmEscalation))
+            await pilot.press("y")
+            assert await _wait(pilot, lambda: "(Claude · $0.031; $0.15 of $5.00)" in _texts(app))
+            assert session.escalated == [None]
+            assert "Here is a proof." in _texts(app) and app.last_answer == "Here is a proof."
     asyncio.run(scenario())
 
 

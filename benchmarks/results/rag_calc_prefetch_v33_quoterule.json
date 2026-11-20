@@ -1,0 +1,604 @@
+{
+ "library": "data\\eval_library",
+ "k": 5,
+ "documents": [
+  "Adam: A Method for Stochastic Optimization",
+  "Deep Residual Learning for Image Recognition",
+  "Attention Is All You Need",
+  "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+  "LoRA: Low-Rank Adaptation of Large Language Models"
+ ],
+ "set": "calc",
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "5/5",
+   "mrr": 1.0,
+   "rows": [
+    {
+     "id": "calc-tf-lr8000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-tf-lr2000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-lora-params",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "5/5",
+   "mrr": 1.0,
+   "rows": [
+    {
+     "id": "calc-tf-lr8000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-tf-lr2000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-lora-params",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid-noscope": {
+   "hit_at_k": "5/5",
+   "mrr": 1.0,
+   "rows": [
+    {
+     "id": "calc-tf-lr8000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-tf-lr2000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-adam-bias",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-lora-params",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "5/5",
+   "mrr": 0.867,
+   "rows": [
+    {
+     "id": "calc-tf-lr8000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-tf-lr2000",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-adam-bias",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-lora-params",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "calc-resnet-depth",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ },
+ "prefetch": true,
+ "closed_book": false,
+ "guard": true,
+ "repeat": 4,
+ "answers": [
+  {
+   "id": "calc-tf-lr8000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 33.5,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "**Learning rate at step 8000 ≈ 0.000494 (or ~4.94 × 10⁻⁴)**\n\n---\n\n### Walkthrough:\n\n1. **Identify the phase**: Since 8000 > warmup_steps (4000), we’re in the decay phase, so use `step_num^(-0.5)`.\n2. **Plug into formula**:  \n   `lrate = 512^(-0.5) * 8000^(-0.5)` → which simplifies to `1 / sqrt(512 * 8000)`\n3. **Calculate**: The tool gives you ~0.0004941.\n\nCommon pitfall: forgetting that after warmup, the learning rate decays as `step_num^(-0.5)`, not staying constant or following a different curve.\n\n---\n\n**Check your understanding:**  \nWhat’s the learning rate at step 4000 (the last warmup step)?"
+  },
+  {
+   "id": "calc-tf-lr2000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "0/1",
+   "all_facts": false,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 20.5,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, because of course you’d ask for a specific step number just before warmup ends—right when things get interesting.  \n\nFrom [L1], the learning rate schedule is:  \n**lrate = d_model^(-0.5) · min(step_num^(-0.5), step_num · warmup_steps^(-1.5))**, with **warmup_steps = 4000**.  \n\nFor **d_model = 512** and **step_num = 2000**:  \n- Compute **d_model^(-0.5)**: 512^(-0.5) ≈ 0.044194  \n- Since 2000 < 4000, we’re in the warmup phase, so use **step_num · warmup_steps^(-1.5)**:  \n  - **warmup_steps^(-1.5)** = 4000^(-1.5) ≈ 0.000078125  \n  - Multiply by 2000: 2000 × 0.000078125 ≈ 0.15625  \n- The minimum of **step_num^(-0.5)** (≈0.02236) and **0.15625** is **0.02236**.  \n\nSo:  \n**lrate = 0.044194 × 0.02236 ≈ 0.000988**  \n\n**Final answer: ~0.000988** (or exactly **512^(-0.5) × 2000^(-0.5)**).  \n\nCheck your understanding: What’s the learning rate at step 3000 with these settings?"
+  },
+  {
+   "id": "calc-adam-bias",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 20.8,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The first-moment bias-correction factor at t=10 is **≈ 1.535**.\n\n### Why this matters:\n1. **Initialization bias**: Since m₀ = 0 [L4], early estimates of the moving average are biased toward zero. The correction term compensates for this.\n2. **t=10 isn't \"early\" anymore**: At t=10, β₁¹⁰ ≈ 0.349, so the correction factor is already ~1.54—not huge, but non-trivial. By t=100 it’s barely noticeable (~1.002).\n3. **Sparse gradients**: As noted [L2], if gradients are sparse (small β₂), lack of bias correction causes early steps to be much larger—hence the importance of this term.\n\n### Check your understanding:\nIf you increase t to 20, what’s the new correction factor? Is it closer to 1 or further from 1 than at t=10?"
+  },
+  {
+   "id": "calc-lora-params",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 23.4,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "**Answer:** **65,536 trainable parameters.**\n\n**Walkthrough:**  \n1. The update is \\( \\Delta W = B A \\), with \\( B \\in \\mathbb{R}^{4096 \\times 8} \\) and \\( A \\in \\mathbb{R}^{8 \\times 4096} \\).  \n2. Count parameters:  \n   - \\( B \\): \\( 4096 \\times 8 = 32,768 \\)  \n   - \\( A \\): \\( 8 \\times 4096 = 32,768 \\)  \n3. Total: \\( 32,768 + 32,768 = 65,536 \\).  \n\nNotice how tiny this is compared to the original \\( 4096 \\times 4096 = 16,777,216 \\) parameters. That’s the whole point: you get a fraction of the capacity for a negligible memory cost.\n\n**Check your understanding:**  \nIf you applied LoRA to *both* \\( W_q \\) and \\( W_v \\) in an attention head (each 4096×4096), with rank 8, how many trainable parameters would that add?"
+  },
+  {
+   "id": "calc-resnet-depth",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 16.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Sixteen layers of residual blocks is a bit like trying to build a bridge with too many stilts—plenty of support, but maybe overkill for CIFAR-10.\n\nThe ResNet paper specifies that the total number of stacked weighted layers is **6n+2** [L1]. For n = 18:\n\n```python\ntotal_layers = 6 * 18 + 2\n```\n\nThat’s:\n- 6 × 18 = 108\n- 108 + 2 = 110\n\nSo the network with n = 18 has **110 layers**.\n\nThis matches the paper’s exploration of a 110-layer ResNet on CIFAR-10 [L4]."
+  },
+  {
+   "id": "calc-tf-lr8000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 27.3,
+   "rounds": 3,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The learning rate at step 8000 is **≈ 0.000494** (or 0.0494%).  \n\n### Walkthrough:\n1. **Identify the formula**: [L1] gives lrate = d_model^(-0.5) × min(step_num^(-0.5), step_num / warmup_steps^(-1.5)).  \n2. **Plug in values**: d_model = 512, step_num = 8000, warmup_steps = 4000.  \n3. **Evaluate the min term**: At step 8000 > warmup_steps (4000), we’re in the decay phase, so min = step_num^(-0.5).  \n4. **Compute**: 1/√8000 × 1/√512 ≈ 0.000494.  \n\n### Check your understanding:\nWhat is the learning rate at step 3000 (still in the warmup phase)?"
+  },
+  {
+   "id": "calc-tf-lr2000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 33.8,
+   "rounds": 4,
+   "tools": [
+    "calculate",
+    "calculate",
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The learning rate at step 2000 is **0.0003494** (approximately).\n\n---\n\n### Walkthrough\n\n1. **Formula**: The Transformer paper uses a warmup followed by decay:  \n   $\\text{lrate} = d_{\\text{model}}^{-0.5} \\cdot \\min(\\text{step\\_num}^{-0.5}, \\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5})$.\n\n2. **Warmup check**: At step 2000 (before the peak at 4000), the second term ($\\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5}$) is smaller, so it dominates.\n\n3. **Compute min**:  \n   - $2000^{-0.5} \\approx 0.02236$  \n   - $2000 \\cdot 4000^{-1.5} \\approx 0.007906$  \n   → min = $0.007906$\n\n4. **Scale by $d_{\\text{model}}^{-0.5}$**:  \n   - $512^{-0.5} \\approx 0.04419$  \n   - Final lrate = $0.04419 \\cdot 0.007906 \\approx 0.0003494$\n\n---\n\n**Check your understanding**: What is the learning rate at step 4000 (the warmup peak)?"
+  },
+  {
+   "id": "calc-adam-bias",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 18.1,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Oops, my mental math was off—let me correct that:\n\nThe bias-correction factor at t=10 is **1.535**.\n\n### Why this matters\nAdam initializes both moment estimates to zero [L4], which creates a bias toward zero, especially early on when the exponential moving average hasn't \"warmed up\" yet. The correction term 1/(1 - β₁ᵗ) compensates for this by dividing the biased estimate by how far we are from the stationary distribution. At t=10 with β₁=0.9, the factor is ~1.535, meaning the raw first-moment estimate is about 64% too small and needs to be scaled up accordingly [L5].\n\n**Check your understanding:** What would the bias-correction factor be at t=1 if β₁ stayed 0.9?"
+  },
+  {
+   "id": "calc-lora-params",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "2106.09685"
+   ],
+   "seconds": 25.7,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Oops—my brain skipped a beat. The correct total is **65,536**, not 128. My apologies for the mental math hiccup.\n\n**Breakdown:**\n- \\( B \\): \\( 4096 \\times 8 = 32,768 \\) parameters  \n- \\( A \\): \\( 8 \\times 4096 = 32,768 \\) parameters  \n- Total: \\( 32,768 + 32,768 = 65,536 \\)\n\nThis matches the formula in [L3]: \\( |\\Theta| = 2 \\times \\hat{L}_{\\text{LoRA}} \\times d_{\\text{model}} \\times r \\), where for a single weight matrix \\( \\hat{L}_{\\text{LoRA}} = 1 \\), \\( d_{\\text{model}} = 4096 \\), and \\( r = 8 \\).\n\n**Check your understanding:** If you applied LoRA with rank \\( r = 16 \\) to the same matrix, how many trainable parameters would you have?"
+  },
+  {
+   "id": "calc-resnet-depth",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 4.6,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The ResNet paper's CIFAR-10 networks have 6n+2 layers. How many layers does the network with n = 18 have?\n\n**Solution:**  \nFrom the paper [L1], the architecture is explicitly stated as having \"totally 6n+2 stacked weighted layers.\" Plugging in n = 18:\n\n**Layers = 6 × 18 + 2 = 108 + 2 = 110.**\n\nSo, the network with n = 18 has **110 layers**. This matches the ResNet-110 variant mentioned in [L4]."
+  },
+  {
+   "id": "calc-tf-lr8000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 29.6,
+   "rounds": 3,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The learning rate at step 8000 is approximately **0.000494** (or 0.0494%).\n\n---\n\n### Walkthrough: Why this works\n\n1. **Understand the formula**: The paper uses a schedule that ramps up linearly for the first `warmup_steps`, then decays as `step_num^(-0.5)`.\n2. **Check which phase you're in**: At step 8000, since 8000 > 4000 (warmup_steps), we're in the decay phase, so we use the first term of the min: `step_num^(-0.5)`.\n3. **Multiply by the base scaling factor**: The whole thing is scaled by `d_model^(-0.5)`, which normalizes the learning rate based on model size.\n\n---\n\n### Check your understanding\n\nIf you were at step 4001 instead of 8000, would you still use the same part of the min function? Explain why or why not in one sentence."
+  },
+  {
+   "id": "calc-tf-lr2000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "0/1",
+   "all_facts": false,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 25.3,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "So the learning rate at step 2000 is approximately **0.000988**.\n\nWalkthrough:\n1. Identify that `step_num = 2000 < warmup_steps = 4000`, so we’re in the linear warmup phase.\n2. Use the formula for warmup: `lrate = d_model^(-0.5) * step_num^(-0.5)`\n3. Plug in `d_model = 512` and `step_num = 2000`.\n4. Compute `512^(-0.5) ≈ 0.0442` and `2000^(-0.5) ≈ 0.0224`.\n5. Multiply them to get `≈ 0.000988`.\n\nCheck your understanding: What would the learning rate be at step 4000, just as warmup ends?"
+  },
+  {
+   "id": "calc-adam-bias",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 21.4,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The first-moment bias-correction factor at step *t* = 10 is **≈ 1.535**.\n\n---\n\n### Why this matters:\n- At *t* = 1, the correction is just 1 / (1 - 0.9) = 10. Adam’s early steps are heavily inflated without correction—imagine taking a giant leap on your first iteration because the algorithm thinks your gradient mean is huge when it’s not [L4].\n- As *t* grows, β₁^t shrinks and the factor approaches 1. By *t* = 10, you’re already down to ~1.535, which means the bias is mostly gone but still non-trivial.\n\n---\n\n**Check your understanding:**  \nWhat would the correction factor be at *t* = 20 with the same β₁ = 0.9? (Hint: compute 1 / (1 - 0.9²⁰).)"
+  },
+  {
+   "id": "calc-lora-params",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 24.2,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, the classic \"how many *extra* bytes does LoRA add?\" question—because who can resist counting parameters in their sleep?\n\nHere’s the math: In LoRA, a single weight matrix $W_0 \\in \\mathbb{R}^{d \\times k}$ is updated via $BA$, where $B \\in \\mathbb{R}^{d \\times r}$ and $A \\in \\mathbb{R}^{r \\times k}$. The total trainable parameters per matrix are:\n$$\\text{params} = d \\cdot r + r \\cdot k = r(d + k)$$\n\nFor your case:\n- $d = 4096$ (rows),\n- $k = 4096$ (columns),\n- $r = 8$.\n\nPlugging in:\n$$\\text{params} = 8 \\times (4096 + 4096) = 8 \\times 8192 = 65,536$$\n\n**Answer: 65,536 trainable parameters.**\n\n---\n\n### Walkthrough:\n1. **LoRA decomposition**: Instead of updating all $d \\cdot k$ parameters in $W_0$, LoRA freezes $W_0$ and trains only $B$ and $A$.\n2. **Parameter count for B**: $4096 \\times 8 = 32,768$.\n3. **Parameter count for A**: $8 \\times 4096 = 32,768$.\n4. **Total**: $32,768 + 32,768 = 65,536$.\n\n### Why this matters:\n- Compared to full fine-tuning ($4096 \\times 4096 = 16,777,216$ parameters), LoRA adds just **~0.4%** of the weight matrix size in trainable parameters.\n- This is why LoRA is so memory-efficient and popular for adapting large models.\n\n### Check your understanding:\nIf you had a $1024 \\times 512$ weight matrix with rank $r = 16$, how many trainable parameters would it add?"
+  },
+  {
+   "id": "calc-resnet-depth",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 16.3,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Just like a ResNet stack, the formula is straightforward once you stop overthinking it.\n\nThe paper states: \"There are totally 6n+2 stacked weighted layers\" [L1].\n\nFor n = 18:\n*   **Calculation:** `6 * 18 + 2`\n*   **Result:** 108 + 2 = 110\n\nThe network has **110** layers. This matches the \"ResNet-110\" model mentioned in the paper for n=18 [L4]."
+  },
+  {
+   "id": "calc-tf-lr8000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 24.9,
+   "rounds": 3,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The learning rate at step 8000 is **0.000494** (or approximately 0.0494%).\n\n---\n\n### Breakdown:\n1. **Compute $d_{\\text{model}}^{-0.5}$**:  \n   $512^{-0.5} \\approx 0.013867$\n\n2. **Evaluate the two terms in the min**:\n   - $\\text{step\\_num}^{-0.5} = 8000^{-0.5} \\approx 0.011180$\n   - $\\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5} = 8000 \\cdot 4000^{-1.5} \\approx 0.007906$\n\n3. **Take the minimum**:  \n   $\\min(0.011180, 0.007906) = 0.007906$ (the decay phase dominates).\n\n4. **Multiply by $d_{\\text{model}}^{-0.5}$**:  \n   $0.013867 \\cdot 0.007906 \\approx 0.000494$.\n\n---\n\n### Check Your Understanding:\nWhat would the learning rate be at step 2000 (still in the warmup phase)?"
+  },
+  {
+   "id": "calc-tf-lr2000",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 0,
+   "unknown_labels": [],
+   "cited_right_paper": false,
+   "cited_papers": [],
+   "seconds": 27.1,
+   "rounds": 4,
+   "tools": [
+    "calculate",
+    "calculate",
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The learning rate at step 2000 is **0.000349** (or roughly **3.5e-4**).\n\n### Walkthrough:\n1. The schedule has two phases: warmup (linear increase) and decay (inverse square root).\n2. At step 2000, we’re still in the decay phase because `step_num * warmup_steps^-1.5` is smaller than `step_num^-0.5`.\n3. The formula ensures smooth transition from warmup to decay, avoiding abrupt changes.\n\n**Check your understanding:** If you were at step 4000 (the end of warmup), what would the learning rate be?"
+  },
+  {
+   "id": "calc-adam-bias",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1412.6980"
+   ],
+   "seconds": 20.5,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "So the first-moment bias-correction factor at t = 10 is **1.535339933**.\n\nWalkthrough:\n1. β₁ = 0.9 (from Adam defaults [L5])\n2. Compute β₁^t = 0.9^10 ≈ 0.34867844\n3. Subtract from 1: 1 - 0.34867844 ≈ 0.65132156\n4. Take reciprocal: 1 / 0.65132156 ≈ 1.535339933\n\nCommon pitfall: Forgetting that β₁^t means raising to the power t, not multiplying by t. Also, many implementations hard-code this correction, so you might not even see it in the code unless you inspect the math carefully.\n\nCheck your understanding: What is the bias-correction factor at t = 1 if β₁ = 0.9?"
+  },
+  {
+   "id": "calc-lora-params",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "2106.09685"
+   ],
+   "seconds": 26.5,
+   "rounds": 2,
+   "tools": [
+    "calculate"
+   ],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "So the rank-8 LoRA update adds **65,536 trainable parameters** to a single \\(4096 \\times 4096\\) weight matrix.\n\n**Walkthrough:**\n1. LoRA freezes the original weights and only trains two small matrices: \\(B\\) (4096×8) and \\(A\\) (8×4096).\n2. Each has \\(4096 \\times 8 = 32,768\\) parameters.\n3. Together they contribute \\(32,768 + 32,768 = 65,536\\).\n4. This is the formula used in the paper: \\(|\\Theta| = 2 \\cdot d_{model} \\cdot r\\) per LoRA-applied weight matrix [L3].\n\n**Check your understanding:**  \nIf you applied LoRA with rank \\(r = 16\\) to a single \\(8192 \\times 4096\\) weight matrix, how many trainable parameters would it add?"
+  },
+  {
+   "id": "calc-resnet-depth",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 16.7,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, nothing like a perfectly straightforward formula to remind you that even \"simple\" architectures have their own quirks.\n\nAccording to the ResNet paper, the CIFAR-10 networks are defined by the formula **6n + 2** layers [L1]. For n = 18:\n\n\\[\n6 \\times 18 + 2 = 108 + 2 = 110\n\\]\n\nSo, the network with n = 18 has **110 layers**. This matches the paper's own mention of a \"ResNet-110\" when exploring n = 18 [L4]."
+  }
+ ],
+ "arxiv": false
+}

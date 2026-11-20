@@ -1,12 +1,16 @@
 """Chat session logic shared by the line-based CLI (cli.py) and the chat-box UI (tui.py).
 
-Owns the model server, tools, paper library, conversation memory and transcript, and runs one turn
-end to end: automatic library retrieval, the unverified-reference guard, the agent loop, and the
-post-checks (citations, citation support, calculator grounding). It never prints: front-ends get
-callbacks while a reply streams and a TurnOutcome with user-facing notices afterwards.
+Owns the model server, tools, paper library, conversation, long-term memory, transcript and the optional
+Claude escalation, and runs one turn end to end: automatic library retrieval, the unverified-reference
+guard, the agent loop, and the post-checks (citations, citation support, calculator grounding, claimed tool
+use) whose results also decide whether escalating to Claude is suggested. Slow housekeeping - evaluating the
+system prompt ahead of the first question, compacting a long conversation, saving memory notes - runs in
+a background thread between turns; ask() waits for it (the model server has one slot). It never prints:
+front-ends get callbacks while a reply streams and outcomes with user-facing notices afterwards.
 """
 from __future__ import annotations
 
+import datetime
 import json
 import re
 import threading
@@ -14,10 +18,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
 
-from . import config, persona
-from .agent import TurnResult, run_turn
-from .conversation import Conversation
-from .llm import Event, LLMError, LlamaServer, count_tokens
+from . import claude, config, memory, persona
+from .agent import STUCK_REPLY, TurnResult, run_turn
+from .conversation import Conversation, turns_text
+from .llm import Event, LLMError, LlamaServer, count_tokens, warm_up
 from .tools import Tool, ToolBox, ToolResult, calc, default_toolbox
 from .transcript import Transcript
 
@@ -28,10 +32,11 @@ CLAIMED_TOOL_USE = re.compile(
     r"|\bmy (?:search|searches|lookup)\b|\b(?:arxiv|library|web) search(?:es)?(?: results?)?\b|\bsearch results?\b",
     re.I)
 
-HELP = ("Commands: /think on|off  step-by-step reasoning (slower, better at maths/logic)\n"
+HELP = ("Commands: /think on|off       step-by-step reasoning (slower, better at maths/logic)\n"
         "          /arxiv auto on|off  look up named papers/methods on arXiv automatically\n"
-        "          /tools        list available tools\n"
-        "          /reset  clear the conversation   /help   /quit")
+        "          /claude [question]  ask Claude: re-check the last answer, or a new question (shows what is sent first)\n"
+        "          /memory  what ALICE remembers about you   /remember TEXT   /forget ID|all\n"
+        "          /tools   /reset (new conversation)   /help   /quit")
 
 # Full abstracts (arXiv caps them at ~1,920 characters) for the top 2: with 3 results cut at 1,200
 # characters, the answer to "BQ-LoRA's WikiText-2 perplexity" was in the part that got cut off.
@@ -71,7 +76,7 @@ def arxiv_prefetch(text: str) -> tuple[list[dict], str | None]:
 
 @dataclass
 class Notice:
-    kind: Literal["sources", "warning", "info"]
+    kind: Literal["sources", "warning", "info", "escalate", "memory"]
     text: str
 
 
@@ -81,6 +86,7 @@ class TurnOutcome:
     notices: list[Notice] = field(default_factory=list)
     interrupted: bool = False
     error: str | None = None
+    flags: list[str] = field(default_factory=list)      # failed checks (claude.REASONS keys)
 
     @property
     def kept(self) -> bool:
@@ -88,10 +94,19 @@ class TurnOutcome:
 
 
 @dataclass
+class EscalationOutcome:
+    reply: claude.ClaudeReply | None = None
+    notices: list[Notice] = field(default_factory=list)
+    error: str | None = None
+
+
+@dataclass
 class CommandResult:
     message: str = ""
     quit: bool = False
     reset: bool = False
+    escalate: bool = False                 # front-end: prepare_escalation(), confirm, escalate()
+    escalate_question: str | None = None   # /claude <question>
 
 
 class StreamFilter:
@@ -122,13 +137,19 @@ class StreamFilter:
         return out
 
 
+def _new_session_id() -> str:
+    return datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+
+
 class ChatSession:
     def __init__(self, profile: config.Profile, workspace: str | None = ".", tools: bool = True,
                  offline: bool = False, transcript: bool = True, thinking: bool = False,
-                 auto_arxiv: bool | None = None):
+                 auto_arxiv: bool | None = None, memory_notes: bool | None = None,
+                 claude_escalation: bool | None = None):
         self.profile = profile
         self.thinking = thinking
         self.auto_arxiv = config.ARXIV_AUTO if auto_arxiv is None else auto_arxiv
+        self.workspace = Path(workspace).resolve() if workspace else None
         self.startup_notes: list[str] = []
         self._library_size: int | None = None
         self.toolbox: ToolBox | None = None
@@ -140,6 +161,33 @@ class ChatSession:
         self.transcript: Transcript | None = None
         self._want_transcript = transcript
         self.started_server = False
+        self._today: datetime.date | None = None
+        # background work between turns (warm-up, compaction, saving memory)
+        self._bg_thread: threading.Thread | None = None
+        self._bg_label = ""
+        self.warm_timings: dict = {}
+        self.pending_notices: list[Notice] = []     # from background work; shown with the next answer
+        # long-term memory
+        self.memory: memory.MemoryStore | None = None
+        self.session_id = _new_session_id()
+        self._memory_section = ""
+        self._pending_extra: list[str] = []         # one-off lines for the next turn note (/remember)
+        if config.MEMORY_ENABLED if memory_notes is None else memory_notes:
+            try:
+                self.memory = memory.MemoryStore(config.MEMORY_DIR)
+            except Exception as e:                  # e.g. a read-only data folder: chat still works
+                self.startup_notes.append(f"Memory disabled: {e}")
+        # escalation to Claude
+        self.claude: claude.ClaudeClient | None = None
+        self.last_flags: list[str] = []
+        if config.CLAUDE.enabled if claude_escalation is None else claude_escalation:
+            if claude.ClaudeClient.sdk_installed():
+                settings = config.CLAUDE if config.CLAUDE.enabled else claude.ClaudeSettings(
+                    **{**config.CLAUDE.__dict__, "enabled": True})
+                self.claude = claude.ClaudeClient(settings, claude.default_ledger(config.LOG_DIR))
+            else:
+                self.startup_notes.append("Claude escalation is on, but the 'anthropic' package is missing: "
+                                          "pip install -e \".[claude]\"")
 
     # ----- setup
     def _build_tools(self, workspace, offline):
@@ -174,43 +222,214 @@ class ChatSession:
             self._library_size = len(self.library.library.documents())
         return self._library_size or 0
 
-    def start(self) -> bool:
-        """Start (or reuse) the model server and set up memory. Raises LLMError / ValueError."""
+    @property
+    def memory_size(self) -> int:
+        return self.memory.count("fact") if self.memory else 0
+
+    def _system_prompt(self) -> str:
+        return persona.system_prompt(tools=self.tool_names, today=self._today, memory=self._memory_section)
+
+    def start(self, warm: bool = True) -> bool:
+        """Start (or reuse) the model server and set up the conversation. Raises LLMError / ValueError.
+
+        With `warm`, the tools + system prompt are evaluated in the background right away, so the first
+        question doesn't wait for them (14.9 s -> 0.7 s to the first token in the latency benchmark)."""
         self.started_server = self.server.start()
-        self.convo = Conversation(persona.system_prompt(tools=self.tool_names), self.profile.ctx,
-                                  self.profile.thinking_max_tokens, counter=count_tokens)
+        self._today = datetime.date.today()
+        if self.memory:
+            self._memory_section = self.memory.prompt_section(config.MEMORY_PROMPT_FACTS,
+                                                              config.MEMORY_PROMPT_SESSIONS)
+        self.convo = Conversation(self._system_prompt(), self.profile.ctx, self.profile.thinking_max_tokens,
+                                  counter=count_tokens)
         if self._want_transcript:
             self.transcript = Transcript(
                 config.TRANSCRIPT_DIR, model=self.profile.gguf, profile=self.profile.name,
                 persona_version=persona.PERSONA_VERSION, ctx=self.profile.ctx, thinking=self.thinking,
-                tools=sorted(self.tool_names))
+                tools=sorted(self.tool_names), memory_notes=self.memory_size,
+                claude=self.claude.settings.model if self.claude else None)
+        if warm:
+            self._run_background("warming up", self._warm_up)
         return self.started_server
 
     def stop(self) -> None:
+        self.wait_background(timeout=30)
         self.server.stop()
         if self.library:
             self.library.embedder.stop()
+        if self.memory:
+            self.memory.close()
+
+    # ----- background work
+    def _run_background(self, label: str, fn: Callable[[], None]) -> None:
+        self.wait_background()
+
+        def run():
+            try:
+                fn()
+            except Exception as e:                  # never kill the session over housekeeping
+                self.pending_notices.append(Notice("warning", f"({label} failed: {e})"))
+        self._bg_label = label
+        self._bg_thread = threading.Thread(target=run, name=f"alice-{label.replace(' ', '-')}", daemon=True)
+        self._bg_thread.start()
+
+    @property
+    def background(self) -> str | None:
+        """What the session is doing between turns ("warming up", "compacting", ...), or None."""
+        t = self._bg_thread
+        return self._bg_label if t is not None and t.is_alive() else None
+
+    @property
+    def warming(self) -> bool:
+        return self.background == "warming up"
+
+    def wait_background(self, timeout: float | None = None) -> None:
+        t = self._bg_thread
+        if t is not None and t is not threading.current_thread():
+            t.join(timeout)
+
+    wait_warm = wait_background                     # older name (scripts/latency_bench.py)
+
+    def _warm_up(self) -> None:
+        try:
+            specs = self.toolbox.specs() if self.toolbox and self.toolbox.tools else None
+            self.warm_timings = warm_up(self.convo.messages(), self.profile, tools=specs)
+        except LLMError:
+            self.warm_timings = {}                    # not fatal: the next question just takes longer
+
+    def _take_pending_notices(self) -> list[Notice]:
+        out, self.pending_notices = self.pending_notices, []
+        return out
+
+    # ----- memory
+    def _compact(self) -> None:
+        """Summarise all but the newest turns into the conversation summary (and memory notes), then
+        re-evaluate the new, shorter prompt so the next question doesn't wait for it."""
+        convo = self.convo
+        turns = convo.oldest_turns(config.COMPACT_KEEP_TURNS)
+        if not turns:
+            return
+        known = [n.text for n in self.memory.facts(60)] if self.memory else []
+        res = memory.summarize(turns_text(turns), self.profile, known, convo.summary)
+        summary = memory.join_summaries(convo.summary, str(res.get("summary", "")))
+        if not summary:
+            raise LLMError("the model returned an empty summary")
+        before = convo.history_tokens()
+        convo.compact_oldest(len(turns), summary)
+        kept: list[str] = []
+        if self.memory:
+            kept, _ = memory.filter_facts(res.get("facts", []), memory.student_words(turns), known)
+            for f in kept:
+                self.memory.add("fact", f, session=self.session_id)
+            self.memory.replace_session_summary(self.session_id, summary)       # interim; final at the end
+        if self.transcript:
+            self.transcript.event("compacted", turns=len(turns), tokens_before=before,
+                                  tokens_after=convo.history_tokens(), summary=summary, facts=kept)
+        msg = f"(memory: compacted {len(turns)} older turns into a summary to keep the conversation in context"
+        self.pending_notices.append(Notice("memory", msg + (f"; noted: {'; '.join(kept)})" if kept else ")")))
+        self._warm_up()
+
+    def save_memory(self, turns: list[list[dict]] | None = None, earlier_summary: str | None = None,
+                    session_id: str | None = None) -> memory.MemoryUpdate | None:
+        """Write a summary of the conversation (and new facts about the student) to long-term memory.
+        Blocking (one model call, ~5-15 s). Defaults to the current conversation."""
+        if not self.memory or self.convo is None:
+            return None
+        turns = self.convo.turns() if turns is None else turns
+        earlier = self.convo.summary if earlier_summary is None else earlier_summary
+        said = memory.student_words(turns)
+        if not earlier and len(said.strip()) < 40:            # nothing worth remembering
+            return None
+        known = [n.text for n in self.memory.facts(60)]
+        res = memory.summarize(turns_text(turns), self.profile, known, earlier) if turns else {"facts": []}
+        summary = memory.join_summaries(earlier, str(res.get("summary", "")))
+        kept, rejected = memory.filter_facts(res.get("facts", []), said, known)
+        sid = session_id or self.session_id
+        for f in kept:
+            self.memory.add("fact", f, session=sid)
+        if summary:
+            self.memory.replace_session_summary(sid, summary)
+        if self.transcript:
+            self.transcript.event("memory_saved", summary=summary, facts=kept, rejected=rejected)
+        return memory.MemoryUpdate(summary, kept, rejected)
+
+    def save_memory_on_exit(self) -> memory.MemoryUpdate | None:
+        if not (self.memory and config.MEMORY_SAVE_ON_EXIT and self.convo is not None):
+            return None
+        self.wait_background()
+        try:
+            return self.save_memory()
+        except LLMError:
+            return None
+
+    def _memory_command(self, text: str) -> CommandResult:
+        if not self.memory:
+            return CommandResult("(memory is off: started with --no-memory, or [memory] enabled = false)")
+        cmd, _, arg = text.partition(" ")
+        arg = arg.strip()
+        if cmd == "/remember":
+            if not arg:
+                return CommandResult("usage: /remember something about you, e.g. /remember I'm taking "
+                                     "Distributed Systems this term")
+            note = self.memory.add("fact", arg, source="user", session=self.session_id)
+            if note is None:
+                return CommandResult("(I already have a note like that; /memory shows them)")
+            self._pending_extra.append(f"The student asked you to remember: {arg}")
+            return CommandResult(f"(noted #{note.id}; I'll keep it for future sessions)")
+        if cmd == "/forget":
+            if arg == "all":
+                return CommandResult(f"(forgot everything: {self.memory.clear()} notes deleted)")
+            if arg.lstrip("#").isdigit():
+                ok = self.memory.delete(int(arg.lstrip("#")))
+                return CommandResult(f"(note #{arg.lstrip('#')} deleted)" if ok else f"(no note #{arg.lstrip('#')})")
+            return CommandResult("usage: /forget ID   or   /forget all   (/memory lists the IDs)")
+        facts, sessions = self.memory.facts(), self.memory.sessions(5)
+        if not facts and not sessions:
+            return CommandResult("(no notes yet. ALICE writes them when a long conversation is compacted, on "
+                                 "/reset and when the chat closes; /remember adds one now)")
+        lines = [f"What ALICE remembers (stored only on this computer, {self.memory.path}):"]
+        lines += [f"  #{n.id} {n.text}" + ("  (you told me)" if n.source == "user" else "") for n in facts]
+        if sessions:
+            lines.append("Recent conversations:")
+            lines += [f"  #{n.id} {n.day}: {n.text}" for n in sessions]
+        lines.append("/forget ID deletes a note, /forget all deletes everything. Changes apply from the next start.")
+        return CommandResult("\n".join(lines))
 
     # ----- commands
     def command(self, text: str) -> CommandResult | None:
         """Handle a /command. Returns None if `text` is not a command."""
         if not text.startswith("/"):
             return None
-        if text in ("/quit", "/exit"):
+        word = text.split()[0]
+        if word in ("/quit", "/exit"):
             return CommandResult(quit=True)
-        if text == "/help":
+        if word == "/help":
             return CommandResult(HELP)
-        if text == "/tools":
+        if word == "/tools":
             if not self.toolbox:
                 return CommandResult("(tools are off)")
             return CommandResult("\n".join(f"  {t.name}{' (asks first)' if t.needs_confirmation else ''}"
                                            f"{' (internet)' if t.external else ''}" for t in self.toolbox.tools.values()))
-        if text == "/reset":
+        if word == "/reset":
+            self.wait_background()
+            turns, summary, sid = self.convo.turns(), self.convo.summary, self.session_id
             self.convo.reset()
+            self.session_id, self.last_flags = _new_session_id(), []
             if self.transcript:
                 self.transcript.event("reset")
-            return CommandResult("(conversation cleared)", reset=True)
-        if text.startswith("/arxiv"):
+            msg = "(conversation cleared)"
+            if self.memory and (turns or summary):
+                self._run_background("saving memory", lambda: self._save_after_reset(turns, summary, sid))
+                msg = "(conversation cleared; notes from it are being saved to memory in the background)"
+            return CommandResult(msg, reset=True)
+        if word in ("/memory", "/remember", "/forget"):
+            return self._memory_command(text)
+        if word == "/claude":
+            if not self.claude:
+                return CommandResult("(Claude escalation is off: set [claude] enabled = true in alice.toml, or "
+                                     "start with --claude; it needs an Anthropic API key)")
+            q = text[len("/claude"):].strip() or None
+            return CommandResult(escalate=True, escalate_question=q)
+        if word == "/arxiv":
             arg = text.split()[2:] if text.split()[1:2] == ["auto"] else []
             if "arxiv_search" not in self.tool_names:
                 return CommandResult("(arXiv tools are off: started with --offline or --no-tools)")
@@ -220,13 +439,18 @@ class ChatSession:
                     self.transcript.event("auto_arxiv", on=self.auto_arxiv)
             return CommandResult(f"(automatic arXiv lookup {'on' if self.auto_arxiv else 'off'}"
                                  + ("; named papers/methods are sent to arxiv.org)" if self.auto_arxiv else ")"))
-        if text.startswith("/think"):
+        if word == "/think":
             arg = text.split()[1:] or ["on" if not self.thinking else "off"]
             self.thinking = arg[0].lower() in ("on", "1", "true", "yes")
             if self.transcript:
                 self.transcript.event("thinking", on=self.thinking)
             return CommandResult(f"(thinking {'on' if self.thinking else 'off'})")
         return CommandResult("unknown command. " + HELP)
+
+    def _save_after_reset(self, turns, summary, sid) -> None:
+        update = self.save_memory(turns, summary, session_id=sid)
+        if update and update.facts:
+            self.pending_notices.append(Notice("memory", "(memory: noted " + "; ".join(update.facts) + ")"))
 
     # ----- one turn
     def ask(self, text: str, *, on_event: Callable[[Event], None] | None = None,
@@ -239,29 +463,33 @@ class ChatSession:
         convo = self.convo
         if convo is None:
             raise RuntimeError("ChatSession.ask() called before start()")
-        convo.add_user(text)
+        self.wait_background()                           # one server slot: housekeeping finishes first anyway
+        if datetime.date.today() != self._today:         # keep "today's date" right in long sessions
+            self._today = datetime.date.today()
+            convo.system["content"] = self._system_prompt()
         if self.transcript:
             self.transcript.user(text)
         prefetched, hits = [], []
         if self.library:
             prefetched, hits = self.library.prefetch(text)
-            if prefetched:
-                convo.add(*prefetched)
-                if on_library:
-                    on_library(sorted({h.where for h in hits}))
+            if prefetched and on_library:
+                on_library(sorted({h.where for h in hits}))
         guard = not prefetched and persona.needs_reference_guard(text)
-        arxiv_query = None
+        arxiv_query, looked_up = None, []
         if guard and self.auto_arxiv and "arxiv_search" in self.tool_names:
             if on_arxiv and (q := arxiv_lookup_query(text)):
                 on_arxiv(q)                              # show what is sent before sending it
             looked_up, arxiv_query = arxiv_prefetch(text)
-            if looked_up:
-                convo.add(*looked_up)
         style = persona.pick_opener_style()
-        system = persona.system_prompt(style, tools=self.tool_names, guard=guard)
-        out = TurnOutcome()
+        extra, self._pending_extra = self._pending_extra, []
+        # Per-reply instructions travel with the question (and stay in the history), so the system prompt and
+        # everything before this turn are byte-identical to the last request and come from the server's cache.
+        convo.add_user(text + persona.turn_note(style, guard, arxiv_available="arxiv_search" in self.tool_names,
+                                                extra=extra))
+        convo.add(*prefetched, *looked_up)
+        out = TurnOutcome(notices=self._take_pending_notices())
         try:
-            out.result = run_turn(convo.messages(system), self.profile, self.toolbox, thinking=self.thinking,
+            out.result = run_turn(convo.messages(), self.profile, self.toolbox, thinking=self.thinking,
                                   on_event=on_event, on_tool=on_tool, on_tool_start=on_tool_start,
                                   confirm=confirm, cancel=cancel)
             out.interrupted = out.result.finish == "interrupted"
@@ -271,6 +499,7 @@ class ChatSession:
             out.error = str(e)
         if not out.kept:
             convo.pop_turn()                         # nothing usable came back: forget the question
+            self._pending_extra = extra + self._pending_extra
             if out.interrupted:
                 out.notices.append(Notice("info", "(stopped; this exchange was not kept)"))
             return out
@@ -279,6 +508,22 @@ class ChatSession:
         citations = self._check_citations(result.reply, out.notices, hits) if self.library else None
         numbers_ok = self._check_calculations(result, out.notices)
         fake_tool_claim = self._check_claimed_tools(result, bool(prefetched or arxiv_query), out.notices)
+        if citations and citations["unknown"]:
+            out.flags.append("unknown_citations")
+        if citations and citations["unsupported"]:
+            out.flags.append("unsupported_numbers")
+        if numbers_ok is False:
+            out.flags.append("calculation_mismatch")
+        if fake_tool_claim:
+            out.flags.append("claimed_tools")
+        if result.finish == "tool_loop" or result.reply == STUCK_REPLY:
+            out.flags.append("tool_loop")
+        if guard and persona.ADMITS_UNKNOWN.search(result.reply):
+            out.flags.append("doesnt_know")
+        self.last_flags = list(out.flags)
+        if out.flags and self.claude and self.claude.settings.suggest:
+            out.notices.append(Notice("escalate", claude.suggestion(out.flags)
+                                      + " /claude asks Claude (you'll see what is sent first)."))
         if result.finish == "length":
             out.notices.append(Notice("info", "(reply hit the length limit and was cut off; type 'continue' "
                                               "for the rest)"))
@@ -287,13 +532,69 @@ class ChatSession:
             self.transcript.assistant(
                 result.reply, thinking=self.thinking, opener_style=style, finish=result.finish,
                 seconds=result.seconds, gen_tokens=result.gen_tokens, rounds=result.rounds,
-                reasoning_chars=result.reasoning_chars,
+                reasoning_chars=result.reasoning_chars, timings=result.timings,
                 tools=[{"name": t.name, "args": t.args, "ok": t.ok, "declined": t.declined,
                         "output": t.output[:2000]} for t in result.tool_results],
                 citations=citations, prefetched=bool(prefetched), calculation_grounded=numbers_ok,
-                reference_guard=guard, claimed_tool_use_without_tools=fake_tool_claim, auto_arxiv_query=arxiv_query)
+                reference_guard=guard, claimed_tool_use_without_tools=fake_tool_claim, auto_arxiv_query=arxiv_query,
+                flags=out.flags)
+        if convo.needs_compaction(config.COMPACT_AT, config.COMPACT_KEEP_TURNS):
+            self._run_background("compacting", self._compact)
         return out
 
+    # ----- escalation to Claude
+    def prepare_escalation(self, question: str | None = None) -> claude.EscalationRequest:
+        """Build (but don't send) the request for /claude. Raises claude.ClaudeError with a readable reason."""
+        if not self.claude:
+            raise claude.ClaudeError("Claude escalation is off")
+        self.wait_background()
+        req = claude.build_request(self.claude.settings, self.convo.turns(), question=question,
+                                   flags=self.last_flags if question is None else (),
+                                   workspace=self.workspace, today=self._today)
+        self.claude.check_budget(req)
+        return req
+
+    def escalate(self, req: claude.EscalationRequest, on_text: Callable[[str], None] | None = None,
+                 on_status: Callable[[str], None] | None = None,
+                 cancel: threading.Event | None = None) -> EscalationOutcome:
+        out = EscalationOutcome()
+        try:
+            reply = self.claude.ask(req, on_text=on_text, on_status=on_status, cancel=cancel)
+        except claude.ClaudeError as e:
+            out.error = str(e)
+            return out
+        out.reply = reply
+        if self.transcript:
+            self.transcript.event("claude", question=req.question, reasons=req.reasons, reply=reply.text,
+                                  **claude.record_dict(reply))
+        budget = self.claude.settings.monthly_budget_usd
+        cost_line = (f"(Claude · {reply.model} · {reply.input_tokens:,} in / {reply.output_tokens:,} out · "
+                     f"${reply.cost_usd:.3f}{' est.' if reply.estimated else ''}; ${reply.month_total:.2f} of "
+                     f"${budget:.2f} this month)")
+        if reply.interrupted:
+            out.notices += [Notice("info", "(stopped; Claude's partial answer was not kept)"), Notice("info", cost_line)]
+            return out
+        if reply.refusal_category and not reply.text.strip():
+            out.notices += [Notice("warning", f"Claude declined to answer this (reason: {reply.refusal_category})."),
+                            Notice("info", cost_line)]
+            return out
+        if req.replaces_last:              # the flagged local answer is replaced, so ALICE builds on the right one
+            for m in reversed(self.convo.history):
+                if m["role"] == "assistant" and not m.get("tool_calls"):
+                    m["content"] = reply.text
+                    break
+        else:
+            self.convo.add_user(req.question)
+            self.convo.add_assistant(reply.text)
+        self.last_flags = []
+        if self.library:
+            self._check_citations(reply.text, out.notices)
+        if reply.stop_reason == "max_tokens":
+            out.notices.append(Notice("info", "(Claude's answer hit the length limit and was cut off)"))
+        out.notices.append(Notice("info", cost_line))
+        return out
+
+    # ----- post-checks
     def _check_citations(self, reply: str, notices: list[Notice], prefetched_hits=()) -> dict:
         rep = self.library.check(reply)
         if rep.cited:

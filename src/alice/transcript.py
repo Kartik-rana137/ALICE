@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 
 
 class Transcript:
     def __init__(self, directory: Path, **session_info):
+        self._lock = threading.Lock()             # compaction / memory events come from a background thread
         directory.mkdir(parents=True, exist_ok=True)
         self.path = directory / time.strftime("%Y-%m-%d_%H%M%S.jsonl")
         n = 1
@@ -17,8 +19,8 @@ class Transcript:
         self._write({"type": "session", "started": _now(), **session_info})
 
     def _write(self, record: dict) -> None:
-        with open(self.path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        with self._lock, open(self.path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
     def user(self, text: str) -> None:
         self._write({"type": "user", "ts": _now(), "content": text})

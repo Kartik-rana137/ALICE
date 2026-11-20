@@ -6,10 +6,33 @@ from typing import Callable
 
 CHARS_PER_TOKEN = 3.0     # conservative fallback when no tokenizer is available
 MESSAGE_OVERHEAD = 8      # chat-template tokens per message (role markers etc.), rounded up
+SUMMARY_HEADER = ("\nSummary of the earlier part of this conversation (those turns were compacted to save "
+                  "space; ask the student if you need a detail that is not here):\n")
 
 
 def estimate_tokens(text: str) -> int:
     return int(len(text) / CHARS_PER_TOKEN) + 1
+
+
+def turns_text(turns: list[list[dict]], max_reply_chars: int = 700, student: str = "Student",
+               assistant: str = "ALICE") -> str:
+    """Plain-text rendering of turns (student messages without turn notes, final replies shortened, tool use
+    as one line). Used for memory summaries and as context for escalation."""
+    from .persona import strip_note
+    lines: list[str] = []
+    for turn in turns:
+        for m in turn:
+            content = (m.get("content") or "").strip()
+            if m["role"] == "user":
+                lines.append(f"{student}: {strip_note(content)}")
+            elif m["role"] == "assistant" and m.get("tool_calls"):
+                names = sorted({c["function"]["name"] for c in m["tool_calls"]})
+                lines.append(f"({assistant} used {', '.join(names)})")
+            elif m["role"] == "assistant" and content:
+                short = (content if len(content) <= max_reply_chars
+                         else content[:max_reply_chars] + " [rest of the reply omitted from these notes]")
+                lines.append(f"{assistant}: {short}")
+    return "\n".join(lines)
 
 
 def _message_text(m: dict) -> str:
@@ -32,6 +55,7 @@ class Conversation:
     def __init__(self, system_prompt: str, ctx: int, reply_budget: int, margin: int = 384,
                  counter: Callable[[str], int] | None = None):
         self.system = {"role": "system", "content": system_prompt}
+        self.summary = ""                     # compacted earlier turns (see compact_oldest)
         self.history: list[dict] = []
         self._counter = counter
         self._cache: dict[str, int] = {}
@@ -75,6 +99,33 @@ class Conversation:
 
     def reset(self) -> None:
         self.history.clear()
+        self.summary = ""
+
+    # ----- compaction -----
+    def history_tokens(self) -> int:
+        return sum(self.tokens(m) for m in self.history) + (self.tokens(self.summary) if self.summary else 0)
+
+    def needs_compaction(self, fraction: float = 0.75, keep_turns: int = 2) -> bool:
+        """True when the history fills more than `fraction` of the budget and compacting would free a real
+        share of it (at least a third of that threshold). Without the second condition a long summary kept
+        the history above the threshold and every later turn triggered another compaction (memory eval)."""
+        if len(self.turns()) <= keep_turns or self.history_tokens() <= fraction * self.budget:
+            return False
+        freed = sum(self.tokens(m) for t in self.oldest_turns(keep_turns) for m in t)
+        return freed >= fraction * self.budget / 3
+
+    def oldest_turns(self, keep_turns: int = 2) -> list[list[dict]]:
+        """The turns a compaction would summarise: all but the newest `keep_turns`."""
+        turns = self.turns()
+        return turns[:max(0, len(turns) - keep_turns)]
+
+    def compact_oldest(self, n_turns: int, summary: str) -> None:
+        """Replace the oldest `n_turns` turns with `summary` (which should cover any earlier summary too)."""
+        turns = self.turns()[:n_turns]
+        drop = sum(len(t) for t in turns)
+        start = next((i for i, m in enumerate(self.history) if m["role"] == "user"), 0)
+        del self.history[start:start + drop]
+        self.summary = summary.strip()
 
     # ----- reading -----
     def turns(self) -> list[list[dict]]:
@@ -95,7 +146,7 @@ class Conversation:
         keep overrides small, the `margin` absorbs the difference.
         """
         kept: list[list[dict]] = []
-        used = 0
+        used = self.tokens(self.summary) if self.summary else 0
         for turn in reversed(self.turns()):
             cost = sum(self.tokens(m) for m in turn)
             if kept and used + cost > self.budget:
@@ -103,8 +154,10 @@ class Conversation:
             kept.append(turn)
             used += cost
         kept.reverse()
-        system = {"role": "system", "content": system_prompt} if system_prompt else self.system
-        return [system, *(m for turn in kept for m in turn)]
+        content = system_prompt or self.system["content"]
+        if self.summary:
+            content += SUMMARY_HEADER + self.summary + "\n"
+        return [{"role": "system", "content": content}, *(m for turn in kept for m in turn)]
 
     def used_tokens(self) -> int:
         return sum(self.tokens(m) for m in self.messages())

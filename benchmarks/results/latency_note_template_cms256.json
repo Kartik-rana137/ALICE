@@ -1,0 +1,138 @@
+{
+ "tag": "note_template_cms256",
+ "profile": "default",
+ "model": "Qwen3.5-9B-Q4_K_M.gguf",
+ "extra_args": [
+  "--chat-template-file",
+  "templates/qwen3.5-stable-history.jinja",
+  "--checkpoint-min-step",
+  "256"
+ ],
+ "summary": {
+  "ttft_s": 0.83,
+  "total_s": 6.9,
+  "prompt_n": 59.5,
+  "prompt_ms": 543.5,
+  "cache_n": 4967.0,
+  "gen_tps": 36.65,
+  "server_start_s": 8.1,
+  "warmup_wait_s": 12.6,
+  "ttft_total_s": 23.1,
+  "prompt_eval_total_s": 22.7
+ },
+ "turns": [
+  {
+   "rep": 0,
+   "turn": 0,
+   "question": "What is the difference between a process and a thread? Keep it short.",
+   "ttft_s": 0.72,
+   "total_s": 7.4,
+   "prompt_n": 60,
+   "prompt_ms": 482,
+   "cache_n": 2031,
+   "gen_n": 253,
+   "gen_tps": 37.9,
+   "rounds": 1,
+   "prefetch_s": 0.23,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah, yes, processes vs. threads\u2014where even seasoned engineers occasionally lose their minds over shared memory and context switches.  \n\nHere\u2019s the short version:  \n- A **process** has its own independent memory space (code, data, stack). It's like a separate apartment with its own furniture\u2014you can't mess up another person's stuff by accident.  \n- A **thread** is a lightweight unit of execution *within* a process, sharing that process\u2019s memory space but having its own register state and program counter. Threads in the same process are like roommates in the same apartment\u2014they can talk directly to each other (fast), but they also risk stepping on toes if not careful.  \n\nKey differences:  \n- **Memory isolation**: Processes = isolated; threads = share memory.  \n- **Overhead**: Creating a new process is expensive; threads are cheaper.  \n- **Communication**: Inter-process communication (IPC) is slow and complex; threads just read/write shared variables.  \n- **Crash safety**: If one thread crashes, the whole process dies; if one process crashes, others usually keep running.  \n\nCheck your understanding: If you spawn a new thread in Python using `threading`, does it share memory with the parent?"
+  },
+  {
+   "rep": 0,
+   "turn": 1,
+   "question": "What learning rate schedule does the Transformer paper use?",
+   "ttft_s": 7.46,
+   "total_s": 12.0,
+   "prompt_n": 1142,
+   "prompt_ms": 7246,
+   "cache_n": 2343,
+   "gen_n": 169,
+   "gen_tps": 37.4,
+   "rounds": 1,
+   "prefetch_s": 0.19,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "The Transformer paper uses a **warmup schedule**: the learning rate increases linearly for the first 4,000 training steps, then decays proportionally to the inverse square root of the step number thereafter.  \n\nFormally (from [L1]):  \n\\[ \\text{lrate} = d_{\\text{model}}^{-0.5} \\cdot \\min(\\text{step\\_num}^{-0.5}, \\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5}) \\]  \n\nWith \\( \\text{warmup\\_steps} = 4000 \\).  \n\nCheck your understanding: If you double the warmup steps to 8,000, what happens to the peak learning rate? (Hint: it stays the same.)"
+  },
+  {
+   "rep": 0,
+   "turn": 2,
+   "question": "And how many warmup steps did they use?",
+   "ttft_s": 0.78,
+   "total_s": 2.7,
+   "prompt_n": 57,
+   "prompt_ms": 531,
+   "cache_n": 3653,
+   "gen_n": 74,
+   "gen_tps": 37.6,
+   "rounds": 1,
+   "prefetch_s": 0.22,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "Ah, yes\u2014warmup steps. The kind of detail that makes you feel like you\u2019re assembling furniture without instructions.  \n\nThe Transformer paper used **4,000 warmup steps** [L1].  \n\nCheck your understanding: If you trained for only 2,000 steps with this schedule, would the learning rate be increasing or decreasing?"
+  },
+  {
+   "rep": 0,
+   "turn": 3,
+   "question": "With d_model = 512 and that many warmup steps, what is the learning rate at step 8000?",
+   "ttft_s": 12.53,
+   "total_s": 27.6,
+   "prompt_n": 2005,
+   "prompt_ms": 13353,
+   "cache_n": 15854,
+   "gen_n": 496,
+   "gen_tps": 35.9,
+   "rounds": 3,
+   "prefetch_s": 0.29,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "notices": [
+    "Retrieved from your library (not cited inline): Attention Is All You Need, p. 7 (5.3 Optimizer); BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, p. 13 (A.2 Pre-training Procedure); LoRA: Low-Rank Adaptation of Large Language Models, p. 18 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 19 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 20 (D.4 GPT-3)"
+   ],
+   "reply": "At step 8,000 with \\( d_{\\text{model}} = 512 \\) and warmup steps = 4,000, the learning rate is **\u2248 0.000494** (or ~4.94\u00d710\u207b\u2074).  \n\nCheck your understanding: If you trained for only 1,000 steps instead, would the learning rate be higher or lower than this value?",
+   "expected": 0.000494,
+   "correct": true
+  },
+  {
+   "rep": 0,
+   "turn": 4,
+   "question": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.",
+   "ttft_s": 0.88,
+   "total_s": 6.4,
+   "prompt_n": 59,
+   "prompt_ms": 556,
+   "cache_n": 6281,
+   "gen_n": 195,
+   "gen_tps": 35.3,
+   "rounds": 1,
+   "prefetch_s": 0.27,
+   "tools": [],
+   "notices": [],
+   "reply": "Palindrome checking with ignore-case and ignore-spaces is like comparing a sentence to its mirror image after erasing all punctuation and capitalization.  \n\nHere\u2019s the function:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    # Normalize: lowercase and remove spaces\n    normalized = s.lower().replace(\" \", \"\")\n    return normalized == normalized[::-1]\n```\n\nWalkthrough:  \n1. `s.lower()` converts everything to lowercase (so \"A\" and \"a\" are treated the same).  \n2. `.replace(\" \", \"\")` removes all spaces (you could extend this to other whitespace or punctuation with a regex if needed).  \n3. `normalized[::-1]` creates the reversed string.  \n4. The function returns `True` if the normalized string equals its reverse, otherwise `False`.  \n\nCheck your understanding: What does this return for `\"A man, a plan, a canal: Panama\"`?"
+  },
+  {
+   "rep": 0,
+   "turn": 5,
+   "question": "Now make it ignore punctuation too.",
+   "ttft_s": 0.73,
+   "total_s": 5.8,
+   "prompt_n": 51,
+   "prompt_ms": 490,
+   "cache_n": 6534,
+   "gen_n": 182,
+   "gen_tps": 35.9,
+   "rounds": 1,
+   "prefetch_s": 0.21,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah, ignoring punctuation\u2014because apparently spaces weren\u2019t enough to ruin the palindrome illusion.  \n\nHere\u2019s the updated function using a regex to strip all non-alphanumeric characters:\n\n```python\nimport re\n\ndef is_palindrome(s: str) -> bool:\n    # Keep only alphanumeric characters and convert to lowercase\n    cleaned = re.sub(r'[^A-Za-z0-9]', '', s).lower()\n    return cleaned == cleaned[::-1]\n```\n\nWalkthrough:  \n1. `re.sub(r'[^A-Za-z0-9]', '', s)` removes everything that\u2019s not a letter or digit (so punctuation, spaces, and symbols vanish).  \n2. `.lower()` handles case insensitivity.  \n3. The rest is the same: compare the cleaned string to its reverse.  \n\nCheck your understanding: What does this return for `\"Race car!\"`?"
+  }
+ ]
+}

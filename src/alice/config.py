@@ -65,9 +65,47 @@ RETRIEVE_MIN_SIM = float(os.environ.get("ALICE_RETRIEVE_MIN_SIM", _get("embeddin
 RETRIEVE_MIN_SIM_EXPLICIT = float(_get("embedding", "retrieve_min_sim_explicit", 0.50))
 
 
+def _flag(value) -> bool:
+    return str(value).lower() in ("1", "true", "yes", "on")
+
+
 # Automatic arXiv lookup when a question names work that isn't in the library. Off by default: it sends a
 # search phrase (the paper/method name) to arxiv.org without being asked each time.
-ARXIV_AUTO = str(os.environ.get("ALICE_ARXIV_AUTO", _get("arxiv", "auto_lookup", False))).lower() in ("1", "true", "yes", "on")
+ARXIV_AUTO = _flag(os.environ.get("ALICE_ARXIV_AUTO", _get("arxiv", "auto_lookup", False)))
+
+# Long-term memory (memory.py): notes about the student kept between sessions, on this machine only.
+MEMORY_ENABLED = _flag(os.environ.get("ALICE_MEMORY", _get("memory", "enabled", True)))
+MEMORY_DIR = Path(os.environ.get("ALICE_MEMORY_DIR", resolve(_get("memory", "dir", "data/memory"))))
+MEMORY_SAVE_ON_EXIT = _flag(_get("memory", "save_on_exit", True))
+MEMORY_PROMPT_FACTS = int(_get("memory", "prompt_facts", 25))         # newest facts put in the system prompt
+MEMORY_PROMPT_SESSIONS = int(_get("memory", "prompt_sessions", 3))    # newest session summaries
+# Compaction: when the conversation fills this share of the context budget, the oldest turns are summarised
+# (all but the newest `keep_turns`) instead of silently falling out of the window.
+COMPACT_AT = float(_get("memory", "compact_at", 0.75))
+COMPACT_KEEP_TURNS = int(_get("memory", "keep_turns", 2))
+
+
+@dataclass(frozen=True)
+class ClaudeSettings:
+    """Escalation to Claude (claude.py). Off unless enabled; never sends anything without asking."""
+    enabled: bool = False
+    model: str = "claude-opus-5-5"
+    effort: str = "high"                 # low | medium | high | xhigh | max
+    max_tokens: int = 16000
+    monthly_budget_usd: float = 5.0
+    context_turns: int = 4               # earlier turns sent along with the question
+    suggest: bool = True                 # offer /claude when the local answer fails a check
+
+
+CLAUDE = ClaudeSettings(
+    enabled=_flag(os.environ.get("ALICE_CLAUDE", _get("claude", "enabled", False))),
+    model=_get("claude", "model", ClaudeSettings.model),
+    effort=_get("claude", "effort", ClaudeSettings.effort),
+    max_tokens=int(_get("claude", "max_tokens", ClaudeSettings.max_tokens)),
+    monthly_budget_usd=float(_get("claude", "monthly_budget_usd", ClaudeSettings.monthly_budget_usd)),
+    context_turns=int(_get("claude", "context_turns", ClaudeSettings.context_turns)),
+    suggest=_flag(_get("claude", "suggest", True)),
+)
 
 
 @dataclass(frozen=True)
@@ -105,10 +143,21 @@ class Profile:
     logit_bias: tuple = (("Another", -6.0), (" Another", -6.0), ("Oh", -3.0), (" darling", -8.0))
     extra_args: tuple = ()       # extra llama-server flags, e.g. ("-fa", "on", "--cache-type-k", "q8_0")
     note: str = ""
+    # Chat-template override (path relative to the repo root, or absolute; "" = the model's own). The stock
+    # Qwen3.5 template renders earlier turns differently from how the model generated them, so every turn
+    # missed llama-server's prompt cache from the previous turn on (DEVLOG 2026-11-19, response time).
+    chat_template: str = ""
 
     @property
     def path(self) -> Path:
         return MODELS_DIR / self.gguf
+
+    @property
+    def template_path(self) -> Path | None:
+        if not self.chat_template:
+            return None
+        p = Path(self.chat_template)
+        return p if p.is_absolute() else ROOT / p
 
 
 def profile_from_table(name: str, table: dict) -> Profile:
@@ -134,7 +183,8 @@ def build_profiles(cfg: dict) -> dict[str, Profile]:
     profiles = {
         # Chosen in Phase 0 (see docs/DEVLOG.md). A MoE "heavy" profile (Qwen3.6-35B-A3B,
         # n_cpu_moe=36) was benchmarked and removed; re-add it in alice.toml if wanted.
-        "default": Profile("default", "Qwen3.5-9B-Q4_K_M.gguf", note="fully on GPU, ~33 tok/s"),
+        "default": Profile("default", "Qwen3.5-9B-Q4_K_M.gguf", note="fully on GPU, ~37 tok/s",
+                           chat_template="templates/qwen3.5-stable-history.jinja"),
     }
     for name, table in cfg.get("models", {}).items():
         profiles[name] = profile_from_table(name, table)

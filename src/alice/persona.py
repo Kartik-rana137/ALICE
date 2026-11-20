@@ -9,6 +9,9 @@ v3.1 opener variety via a random per-reply opener style instead of banned-phrase
      tool guidance is added only for the tools that are actually available.
 v3.2 honesty about unknown/new work (today's date, training-cutoff rule, unverified-reference guard)
      and tone (student framed as a capable colleague; humour aimed at the topic, not the person).
+v3.3 same rules, new layout: the per-reply opener style and reference guard moved from the end of the system
+     prompt into a note appended to the student's message (prompt caching, ~5x lower time to first token).
+     A "quote the passage's formula first" rule was tested and dropped (no measurable effect, DEVLOG).
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ import datetime
 import random
 import re
 
-PERSONA_VERSION = "v3.2"
+PERSONA_VERSION = "v3.3"
 
 SYSTEM_PROMPT = """\
 You are ALICE, a personal mentor for a computer-science engineering student specialising in AI/ML. \
@@ -111,6 +114,13 @@ def named_terms(text: str) -> list[str]:
     return out
 
 
+# The reply says it doesn't know / can't verify something (same pattern the RAG eval scores with).
+ADMITS_UNKNOWN = re.compile(
+    r"(not (familiar|aware|sure)|n't (have|know|find|recogni[sz]e|seem)|no (record|information|knowledge)|"
+    r"(cannot|can't|couldn't|could not|unable to) (find|verify|confirm|locate)|don't recogni|not in my|"
+    r"beyond my|after my|training (data|cutoff)|knowledge cutoff|(does not|doesn't) appear|newer than)", re.I)
+
+
 def needs_reference_guard(text: str) -> bool:
     """Does the message point at a specific paper / named method the model may not know?"""
     if _WORK_WORDS.search(text):
@@ -162,13 +172,43 @@ def tools_guide(tool_names) -> str:
 
 
 def system_prompt(opener_style: str | None = None, tools=(), guard: bool = False,
-                  today: datetime.date | None = None) -> str:
-    """The system prompt plus tool guidance, today's date, and per-turn notes (opener style, guard)."""
+                  today: datetime.date | None = None, memory: str = "") -> str:
+    """The system prompt plus tool guidance and today's date.
+
+    The chat uses it without `opener_style` / `guard` and puts those per-reply instructions in turn_note()
+    instead: a system prompt that changes every turn invalidates llama-server's prompt cache for everything
+    after it (the whole conversation), which cost 13-36 s before the first token (DEVLOG, response time).
+    Passing them here is kept for the evals' old-layout A/B (--layout system)."""
     tools = list(tools or ())
     prompt = SYSTEM_PROMPT + tools_guide(tools)
     prompt += f"\nToday's date: {(today or datetime.date.today()).isoformat()}.\n"
+    if memory:                                   # long-term notes, fixed for the session (memory.py)
+        prompt += "\n" + memory.rstrip() + "\n"
     if guard:
         prompt += reference_guard(arxiv_available="arxiv_search" in tools)
     if opener_style:
         prompt += f"\nFor this reply, make your opening remark {opener_style}.\n"
     return prompt
+
+
+NOTE_PREFIX = "[Note from ALICE's system, not from the student:"
+
+
+def turn_note(opener_style: str | None = None, guard: bool = False, arxiv_available: bool = False,
+              extra=()) -> str:
+    """Per-reply instructions, appended to the student's message and kept in the history with it, so the
+    prompt prefix stays byte-identical from turn to turn. (Qwen3.5's chat template rejects system messages
+    after the first one, so they can't go in a separate message.) `extra`: one-off notes, e.g. something
+    the student just asked ALICE to remember."""
+    parts = list(extra)
+    if guard:
+        parts.append(reference_guard(arxiv_available).strip())
+    if opener_style:
+        parts.append(f"Make your opening remark {opener_style}.")
+    return f"\n\n{NOTE_PREFIX} {' '.join(parts)}]" if parts else ""
+
+
+def strip_note(text: str) -> str:
+    """The student's own words from a stored user message (without the turn note)."""
+    i = text.find("\n\n" + NOTE_PREFIX)
+    return text[:i] if i >= 0 else text

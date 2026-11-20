@@ -124,8 +124,16 @@ class LlamaServer(ServerProcess):
                "--reasoning-budget", str(p.reasoning_budget)]
         if p.n_cpu_moe:
             cmd += ["--n-cpu-moe", str(p.n_cpu_moe)]
+        if p.template_path:
+            cmd += ["--chat-template-file", str(p.template_path)]
         cmd += list(p.extra_args)
         return cmd
+
+    def start(self, wait_s: int = 600) -> bool:
+        tpl = self.profile.template_path
+        if tpl and not tpl.exists():
+            raise LLMError(f"chat template not found: {tpl} (profile '{self.profile.name}', chat_template)")
+        return super().start(wait_s)
 
 
 def count_tokens(text: str) -> int:
@@ -186,20 +194,47 @@ def iter_sse_events(lines: Iterable[bytes | str]) -> Iterator[Event]:
 
 
 def chat_stream(messages: list[dict], profile: Profile, thinking: bool = False,
-                tools: list[dict] | None = None) -> Iterator[Event]:
-    """Stream the assistant reply for `messages` as Events. `tools` are OpenAI-style function specs."""
+                tools: list[dict] | None = None, max_tokens: int | None = None,
+                extra: dict | None = None) -> Iterator[Event]:
+    """Stream the assistant reply for `messages` as Events. `tools` are OpenAI-style function specs.
+    `extra` is merged into the request (e.g. response_format, temperature overrides)."""
     sampling = profile.thinking_sampling if thinking else profile.sampling
     payload = {
         "messages": messages,
         "stream": True,
-        "max_tokens": profile.thinking_max_tokens if thinking else profile.max_tokens,
+        "max_tokens": max_tokens or (profile.thinking_max_tokens if thinking else profile.max_tokens),
         **sampling.as_dict(),
         "chat_template_kwargs": {"enable_thinking": thinking},
     }
     if profile.logit_bias:
         payload["logit_bias"] = [[s, b] for s, b in profile.logit_bias]
+    payload.update(extra or {})
     if tools:
         payload["tools"] = tools
         payload["parallel_tool_calls"] = True
     with _post("/v1/chat/completions", payload) as resp:
         yield from iter_sse_events(resp)
+
+
+def complete_json(messages: list[dict], profile: Profile, schema: dict, max_tokens: int = 1024,
+                  temperature: float = 0.2) -> dict:
+    """One non-thinking completion constrained to a JSON schema (llama-server grammar), parsed."""
+    text = "".join(ev.text for ev in chat_stream(
+        messages, profile, max_tokens=max_tokens,
+        extra={"temperature": temperature, "presence_penalty": 0.0,
+               "response_format": {"type": "json_schema", "json_schema": {"name": "result", "schema": schema}}})
+        if ev.kind == "content")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise LLMError(f"model returned invalid JSON ({e.msg})") from None
+
+
+def warm_up(messages: list[dict], profile: Profile, tools: list[dict] | None = None) -> dict:
+    """Evaluate a prompt prefix (tools + system prompt) ahead of the first question, so llama-server has
+    it cached when the student asks. Generates one token. Returns the server timings."""
+    timings: dict = {}
+    for ev in chat_stream([*messages, {"role": "user", "content": "hi"}], profile, tools=tools, max_tokens=1):
+        if ev.kind == "finish":
+            timings = ev.timings
+    return timings

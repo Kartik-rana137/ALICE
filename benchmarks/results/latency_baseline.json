@@ -1,0 +1,135 @@
+{
+ "tag": "baseline",
+ "profile": "default",
+ "model": "Qwen3.5-9B-Q4_K_M.gguf",
+ "extra_args": [],
+ "summary": {
+  "ttft_s": 20.68,
+  "total_s": 31.3,
+  "prompt_n": 3215.5,
+  "prompt_ms": 21370.0,
+  "cache_n": 1566.0,
+  "gen_tps": 33.9,
+  "server_start_s": 60.7,
+  "warmup_wait_s": 0.0,
+  "ttft_total_s": 137.7,
+  "prompt_eval_total_s": 138.0
+ },
+ "turns": [
+  {
+   "rep": 0,
+   "turn": 0,
+   "question": "What is the difference between a process and a thread? Keep it short.",
+   "ttft_s": 14.87,
+   "total_s": 21.7,
+   "prompt_n": 2082,
+   "prompt_ms": 14351,
+   "cache_n": 0,
+   "gen_n": 226,
+   "gen_tps": 33.6,
+   "rounds": 1,
+   "prefetch_s": 0.39,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah, another classic question that makes every operating systems professor sigh with the weight of decades. Let\u2019s cut through the confusion.\n\nA **process** is an independent unit of execution with its own memory space (heap, stack, code), while a **thread** is a lightweight unit of execution within a process that shares the same memory but has its own program counter and registers.\n\nKey differences:\n- **Memory isolation**: Processes are isolated; threads share memory.\n- **Creation overhead**: Threads are cheaper to create and switch between than processes.\n- **Communication**: Inter-process communication (IPC) is slower; threads can communicate via shared variables.\n- **Failure impact**: If one process crashes, others are unaffected; if a thread crashes, the whole process may die.\n\nThink of it like this: a process is an apartment building (each tenant has their own room), and a thread is a person inside that building (they share the same space but have their own tasks).\n\nCheck your understanding: If you spawn 10 threads in a single process, how many separate memory spaces are there?"
+  },
+  {
+   "rep": 0,
+   "turn": 1,
+   "question": "What learning rate schedule does the Transformer paper use?",
+   "ttft_s": 12.88,
+   "total_s": 19.7,
+   "prompt_n": 1846,
+   "prompt_ms": 12691,
+   "cache_n": 1566,
+   "gen_n": 243,
+   "gen_tps": 35.5,
+   "rounds": 1,
+   "prefetch_s": 0.16,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "The Transformer paper uses a **warmup schedule** for the learning rate, which is then decayed over time. Specifically, the learning rate `lrate` is defined as:\n\n$$\\text{lrate} = d_{\\text{model}}^{-0.5} \\cdot \\min(\\text{step\\_num}^{-0.5}, \\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5})$$\n\nWhere:\n- `d_model` is the model dimension (e.g., 512 for base, 1024 for big).\n- `warmup_steps` = 4000.\n- The learning rate increases linearly for the first 4000 steps, then decreases proportionally to the inverse square root of the step number thereafter.\n\nThis is described in [L1] of your library notes. It\u2019s a clever way to balance initial stability (via warmup) with long-term convergence (via decay).\n\nCheck your understanding: What would happen if you set `warmup_steps` to 10,000 instead of 4000?"
+  },
+  {
+   "rep": 0,
+   "turn": 2,
+   "question": "And how many warmup steps did they use?",
+   "ttft_s": 13.61,
+   "total_s": 17.0,
+   "prompt_n": 2113,
+   "prompt_ms": 13332,
+   "cache_n": 1566,
+   "gen_n": 117,
+   "gen_tps": 34.1,
+   "rounds": 1,
+   "prefetch_s": 0.26,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "They used **4000 warmup steps** [L1]. \n\nThe formula is designed so that the learning rate climbs linearly for those first 4,000 steps before it starts its inverse-square-root decay. That\u2019s a key hyperparameter\u2014too few and you might overshoot early; too many and you waste time in a suboptimal region.\n\nCheck your understanding: If they had used `warmup_steps = 100`, how would the peak learning rate compare to the original setup (assuming `d_model` stays the same)?"
+  },
+  {
+   "rep": 0,
+   "turn": 3,
+   "question": "With d_model = 512 and that many warmup steps, what is the learning rate at step 8000?",
+   "ttft_s": 26.5,
+   "total_s": 54.9,
+   "prompt_n": 4318,
+   "prompt_ms": 28389,
+   "cache_n": 26471,
+   "gen_n": 925,
+   "gen_tps": 35.6,
+   "rounds": 5,
+   "prefetch_s": 0.27,
+   "tools": [
+    "calculate",
+    "calculate",
+    "calculate",
+    "calculate"
+   ],
+   "notices": [
+    "Retrieved from your library (not cited inline): Attention Is All You Need, p. 7 (5.3 Optimizer); BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, p. 13 (A.2 Pre-training Procedure); LoRA: Low-Rank Adaptation of Large Language Models, p. 18 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 19 (D.2 DEBERTA); LoRA: Low-Rank Adaptation of Large Language Models, p. 20 (D.4 GPT-3)"
+   ],
+   "reply": "So the learning rate at step 8000 is approximately **0.000494** (or $4.94 \\times 10^{-4}$).\n\nTo break it down:\n- At step 8000, we're past the warmup phase (4000 steps), so the learning rate follows the decay term: $\\text{step\\_num} \\cdot \\text{warmup\\_steps}^{-1.5}$.\n- The peak learning rate (at step 4000) is $d_{\\text{model}}^{-0.5} \\cdot 4000^{0.5} = 512^{-0.5} \\cdot 63.25 \\approx 0.000447 \\cdot 63.25 \\approx 0.028$.\n- At step 8000, it's decayed to about $0.000494$, which is roughly $1.76\\%$ of the peak value.\n\nCheck your understanding: What would happen to the learning rate at step 8000 if you increased `warmup_steps` to 8000 (keeping everything else the same)?",
+   "expected": 0.000494,
+   "correct": true
+  },
+  {
+   "rep": 0,
+   "turn": 4,
+   "question": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.",
+   "ttft_s": 34.17,
+   "total_s": 42.7,
+   "prompt_n": 5249,
+   "prompt_ms": 33842,
+   "cache_n": 1566,
+   "gen_n": 236,
+   "gen_tps": 27.7,
+   "rounds": 1,
+   "prefetch_s": 0.2,
+   "tools": [],
+   "notices": [],
+   "reply": "Here\u2019s a clean, correct solution:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    # Normalize: remove non-alphanumeric characters and lower-case\n    normalized = \"\".join(ch.lower() for ch in s if ch.isalnum())\n    return normalized == normalized[::-1]\n```\n\n**Walkthrough:**\n1. **Normalization**: The generator expression filters out anything that isn\u2019t alphanumeric (`ch.isalnum()`), then converts each kept character to lowercase. This handles spaces, punctuation, and mixed case in one pass.\n2. **Palindrome check**: A string is a palindrome if it reads the same forwards and backwards. Slicing with `[::-1]` creates the reversed string efficiently.\n3. **Return**: Compare the normalized string to its reverse.\n\n**Example:**\n- `\"A man, a plan, a canal: Panama\"` \u2192 `\"amanaplanacanalpanama\"` \u2192 palindrome \u2705  \n- `\"Race a car!\"` \u2192 `\"raceacar\"` \u2192 not a palindrome \u274c  \n\n**Check your understanding:** What does `is_palindrome(\"No 'x' in Nixon\")` return?"
+  },
+  {
+   "rep": 0,
+   "turn": 5,
+   "question": "Now make it ignore punctuation too.",
+   "ttft_s": 35.68,
+   "total_s": 40.9,
+   "prompt_n": 5504,
+   "prompt_ms": 35415,
+   "cache_n": 1566,
+   "gen_n": 176,
+   "gen_tps": 33.7,
+   "rounds": 1,
+   "prefetch_s": 0.16,
+   "tools": [],
+   "notices": [],
+   "reply": "It already does! The `ch.isalnum()` check filters out **all** non-alphanumeric characters, which includes spaces, punctuation marks, and any other symbols.\n\nHere\u2019s the function again for clarity:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    normalized = \"\".join(ch.lower() for ch in s if ch.isalnum())\n    return normalized == normalized[::-1]\n```\n\n- `ch.isalnum()` returns `True` only for letters and digits.\n- Everything else (spaces, commas, periods, apostrophes, etc.) is skipped.\n\nSo `\"No 'x' in Nixon\"` becomes `\"nixon\"` after normalization, which **is** a palindrome.\n\n**Check your understanding:** What does this function return for the string `\"Was it a car or a cat I saw?\"`?"
+  }
+ ]
+}

@@ -1,0 +1,315 @@
+{
+ "library": "data\\eval_library",
+ "k": 5,
+ "documents": [
+  "Adam: A Method for Stochastic Optimization",
+  "Deep Residual Learning for Image Recognition",
+  "Attention Is All You Need",
+  "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+  "LoRA: Low-Rank Adaptation of Large Language Models"
+ ],
+ "set": "alias",
+ "retrieval": {
+  "keyword": {
+   "hit_at_k": "4/6",
+   "mrr": 0.583,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "dense": {
+   "hit_at_k": "5/6",
+   "mrr": 0.556,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 3,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid-noscope": {
+   "hit_at_k": "4/6",
+   "mrr": 0.583,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": false,
+     "rank": null,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  },
+  "hybrid": {
+   "hit_at_k": "6/6",
+   "mrr": 0.792,
+   "rows": [
+    {
+     "id": "alias-tf-opt",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-dropout",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-tf-hw",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-lr",
+     "hit": true,
+     "rank": 2,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-cifar",
+     "hit": true,
+     "rank": 4,
+     "right_paper_in_topk": true
+    },
+    {
+     "id": "alias-resnet-shortcut",
+     "hit": true,
+     "rank": 1,
+     "right_paper_in_topk": true
+    }
+   ]
+  }
+ },
+ "prefetch": true,
+ "closed_book": false,
+ "guard": true,
+ "repeat": 1,
+ "answers": [
+  {
+   "id": "alias-tf-opt",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 25.1,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "The Transformer paper used the Adam optimizer with specific hyperparameters:\n\n- β1 = 0.9\n- β2 = 0.98  \n- ε = 10⁻⁹\n\nFor the learning rate schedule, they used:\n```\nlrate = d^(-0.5) * model * min(step_num^(-0.5), step_num * warmup_steps^(-1.5))\n```\n\nWhere `warmup_steps = 4000`. This creates a linear increase for the first 4000 steps, then decays proportionally to the inverse square root of the step number [L1].\n\nThe key insight is this hybrid schedule: start small (to avoid exploding gradients early on), ramp up quickly (since neural nets need some momentum), then slowly decay. It's like warming up a car engine before hitting the highway—too little and you stall, too much and you burn out.\n\n**Final answer: Adam with β1=0.9, β2=0.98, ε=10⁻⁹, plus the warmup schedule above.**\n\nQuick check: If `d_model = 512` and we're at step 1000 (before warmup ends), what's the learning rate?"
+  },
+  {
+   "id": "alias-tf-dropout",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 12.4,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, the Transformer paper’s dropout rate—because apparently nothing is more confusing than remembering whether it’s 0.1 or 0.3 and then wondering why everyone got it wrong anyway.\n\nAccording to your copy of the paper [L1], for the base model, they used a dropout rate of **Pdrop = 0.1** on both the sums of the embeddings and positional encodings in the encoder and decoder stacks. That’s notably lower than the 0.3 they used for other variants or tasks (like English-to-French translation) [L3].\n\nSo, to answer directly:\n- **Base model dropout rate: 0.1**\n- Applied to: sums of embeddings + positional encodings in both encoder and decoder stacks.\n\nThis was chosen after experimentation on the development set, along with other hyperparameters like label smoothing (ε_ls = 0.1) [L1].\n\nQuick check: If you were setting up a base Transformer from scratch today, would you use 0.1 dropout everywhere or tweak it based on your data size?"
+  },
+  {
+   "id": "alias-tf-hw",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1706.03762"
+   ],
+   "seconds": 15.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, another classic: “How long did it take to train the Transformer big model?”—the age-old question of whether we should be impressed by performance or just relieved it finished before lunch.\n\nFrom the paper [L1], the **Transformer (big)** model was trained for **300,000 steps**, which took **3.5 days**. It ran on **one machine with 8 NVIDIA P100 GPUs** [L1]. Each training step took about **1.0 second** for the big models.\n\nQuick breakdown:\n- **Hardware**: 8x NVIDIA P100 GPUs (single machine)\n- **Training duration**: 3.5 days\n- **Steps**: 300,000\n- **Step time**: ~1.0 second per step\n\nThis is notably faster than the base model’s training time, which took 12 hours over 100,000 steps [L1].\n\nCheck your understanding: If we had used a machine with 4 P100 GPUs instead of 8, assuming performance scales linearly, how long would the big model have taken to train?"
+  },
+  {
+   "id": "alias-resnet-lr",
+   "prefetched": true,
+   "searched": true,
+   "facts": "2/2",
+   "all_facts": true,
+   "n_cited": 1,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 17.3,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, another one of those “it’s just a number” questions that hides a whole world of optimization drama. Let’s dive in.\n\nThe ResNet paper used **SGD with a learning rate starting at 0.1**, divided by 10 whenever the training error plateaued, and trained for up to **60 × 10⁴ iterations** [L2]. No fancy warmup or cosine decay—just classic step decay based on validation performance.\n\nHere’s the breakdown:\n1. **Optimizer**: SGD with momentum = 0.9 and weight decay = 0.0001.\n2. **Batch size**: 256.\n3. **Learning rate schedule**:\n   - Start at **0.1**.\n   - Divide by 10 when the error plateaus (i.e., stops improving).\n   - Train for up to **600,000 iterations** [L2].\n\nSimple but effective—no need to overengineer it. The real magic was in the residual connections, not the learning rate trickery.\n\nQuick check: If you were training a 18-layer ResNet and the validation error stopped improving after 30,000 iterations, what would your next learning rate be?"
+  },
+  {
+   "id": "alias-resnet-cifar",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 2,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 15.9,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, the ResNet paper on CIFAR-10—because nothing says \"fiddly optimization\" like trying to train a network that’s *too* deep and watching it explode or vanish like a bad GPU job.\n\nThe deepest network trained on CIFAR-10 in the ResNet paper is **1202 layers** [L4].\n\nHere’s how they got there:\n- They used the architecture shown in Fig. 3 (middle/right) with `n = 200`, which gives a total of **6n + 2 = 1202 layers** [L2].\n- This network was trained end-to-end using SGD and achieved a training error < 0.1% and test error of 7.93% [L4].\n\nThe paper notes that while this is aggressively deep, there are still open problems with such models—like maintaining accuracy without overfitting or managing vanishing gradients further down the stack.\n\n**Check your understanding:**  \nIf they used `n = 100` instead of `n = 200`, how many layers would the network have?"
+  },
+  {
+   "id": "alias-resnet-shortcut",
+   "prefetched": true,
+   "searched": true,
+   "facts": "1/1",
+   "all_facts": true,
+   "n_cited": 3,
+   "unknown_labels": [],
+   "cited_right_paper": true,
+   "cited_papers": [
+    "1512.03385"
+   ],
+   "seconds": 20.8,
+   "rounds": 1,
+   "tools": [],
+   "guard": false,
+   "auto_arxiv_query": null,
+   "admits_unknown": false,
+   "condescending": false,
+   "reply": "Ah, another architectural conundrum—ResNet’s shortcut dilemmas are like choosing between free pizza and expensive steak: both fill you up, but the cost-benefit analysis is key.\n\nHere’s how ResNet handles dimension increases in shortcuts (from your library):\n\n1. **Problem**: The identity mapping shortcut \\( y = F(x) + x \\) [L3] requires input and output dimensions to match. When they don’t (e.g., changing channels), the shortcut must adapt.\n2. **Two options tested** [L2]:\n   - **(A) Zero-padding shortcuts**: Extend the input with zeros to match the larger dimension. No extra parameters, but the padded dimensions don’t participate in residual learning.\n   - **(B) Projection shortcuts**: Use a linear projection \\( W_s \\) (via 1×1 convolutions) to map the input to the target dimension:  \n     \\[ y = F(x) + W_s x \\] [L3]. This adds parameters but ensures all dimensions contribute to learning.\n3. **Experimental findings** [L1]: Three configurations were tested:\n   - All shortcuts identity (A for increasing dims, identity elsewhere).\n   - All shortcuts projections (C).\n   - Mixed (projection only for increasing dims, identity otherwise, B).\n   Results showed **B slightly outperformed A**, but **C was marginally better than B** due to extra parameters in many projection shortcuts. The paper concludes projection shortcuts aren’t essential for solving the degradation problem and opts for **Option B** (projection only when dimensions increase) to balance performance and efficiency.\n\n### Key takeaway\nProjection shortcuts are used sparingly (only for dimension increases) to avoid unnecessary complexity, while identity shortcuts dominate elsewhere.\n\nWhat’s the trade-off between Option A (zero-padding) and Option B (projection) in terms of parameters vs. learning effectiveness?"
+  }
+ ],
+ "arxiv": false
+}

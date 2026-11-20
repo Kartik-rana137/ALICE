@@ -103,7 +103,25 @@ QUESTIONS_ALIAS = [
     ("alias-resnet-shortcut", "1512.03385", "How does the ResNet paper handle shortcuts when the dimensions "
      "increase?", r"zero[- ]padding|projection shortcut", [r"zero|projection"]),
 ]
-QUESTION_SETS = {"famous": QUESTIONS, "2026": QUESTIONS_2026, "alias": QUESTIONS_ALIAS}
+# Grounded calculations (added 2026-11-19): the formula or setting is in the paper, the arithmetic needs the
+# calculator. In the latency benchmark the 9B once computed the Transformer LR with a formula from memory,
+# (step/warmup)^-1.5, although the retrieved passage had the right one. Expected values worked out by hand.
+QUESTIONS_CALC = [
+    ("calc-tf-lr8000", "1706.03762", "Using the Transformer paper's learning-rate schedule with d_model = 512 "
+     "and the warmup steps it used, what is the learning rate at step 8000?",
+     r"warmup_?steps|lrate", [r"0\.000494|0\.0004941|4\.94\s*(?:[×x*]\s*10|e-0?4)|4\.941"]),   # 512^-.5 * 8000^-.5
+    ("calc-tf-lr2000", "1706.03762", "Using the Transformer paper's learning-rate schedule with d_model = 512 "
+     "and the warmup steps it used, what is the learning rate at step 2000?",
+     r"warmup_?steps|lrate", [r"0\.000349|0\.0003494|3\.49\s*(?:[×x*]\s*10|e-0?4)|3\.494"]),   # *2000*4000^-1.5
+    ("calc-adam-bias", "1412.6980", "With the default beta_1 from the Adam paper, what is the first-moment "
+     "bias-correction factor 1 / (1 - beta_1^t) at step t = 10?",
+     r"β1|beta_?1|0\.9\b", [r"1\.535|1\.54\b"]),                                               # 1/(1-0.9^10)
+    ("calc-lora-params", "2106.09685", "In LoRA, how many trainable parameters does a rank r = 8 update add "
+     "for a single 4096 x 4096 weight matrix?", r"rank|low-rank|B\s*∈|r\s*≪", [r"65,?536|65\.5\s?[kK]"]),
+    ("calc-resnet-depth", "1512.03385", "The ResNet paper's CIFAR-10 networks have 6n+2 layers. How many layers "
+     "does the network with n = 18 have?", r"6n\s*\+\s*2|6n\+2", [r"\b110\b"]),
+]
+QUESTION_SETS = {"famous": QUESTIONS, "2026": QUESTIONS_2026, "alias": QUESTIONS_ALIAS, "calc": QUESTIONS_CALC}
 
 
 def doc_arxiv_ids(library: Library) -> dict[int, str]:
@@ -143,7 +161,8 @@ CONDESCENDING = re.compile(
 
 
 def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, closed_book: bool = False,
-                guard: bool = True, with_arxiv: bool = False, auto_arxiv: bool = False) -> list[dict]:
+                guard: bool = True, with_arxiv: bool = False, auto_arxiv: bool = False,
+                layout: str = "note") -> list[dict]:
     """closed_book: the model alone (calculator only, no library) - what it knows without RAG."""
     ids = doc_arxiv_ids(library)
     profile = config.PROFILES["default"]
@@ -160,8 +179,13 @@ def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, c
             use_guard = guard and not pre and persona.needs_reference_guard(q)          # same rule as the CLI
             looked_up, arxiv_query = (arxiv_prefetch(q) if (auto_arxiv and with_arxiv and use_guard) else ([], None))
             pre = pre + looked_up
-            system = persona.system_prompt(persona.pick_opener_style(), tools=list(box.tools), guard=use_guard)
-            res = run_turn([{"role": "system", "content": system}, {"role": "user", "content": q}, *pre],
+            style = persona.pick_opener_style()
+            if layout == "system":                   # pre-2026-11-19: per-reply note inside the system prompt
+                system, user = persona.system_prompt(style, tools=list(box.tools), guard=use_guard), q
+            else:                                     # as the chat does it now (cache-friendly)
+                system = persona.system_prompt(tools=list(box.tools))
+                user = q + persona.turn_note(style, use_guard, arxiv_available="arxiv_search" in box.tools)
+            res = run_turn([{"role": "system", "content": system}, {"role": "user", "content": user}, *pre],
                            profile, box)
             rep = session.check(res.reply)
             searched = bool(pre) or any(t.name == "search_library" for t in res.tool_results)
@@ -200,6 +224,9 @@ def main() -> int:
     ap.add_argument("--arxiv", action="store_true", help="give the model the arXiv tools (sends questions to arxiv.org)")
     ap.add_argument("--auto-arxiv", action="store_true", help="with --arxiv: automatic lookup when the guard fires")
     ap.add_argument("--tag", default="", help="suffix for the output file name")
+    ap.add_argument("--layout", choices=["note", "system"], default="note",
+                    help="per-reply instructions appended to the question (current) or in the system prompt (old)")
+    ap.add_argument("--repeat", type=int, default=1, help="ask every question N times (answers only)")
     a = ap.parse_args()
     questions = QUESTION_SETS[a.set]
     sys.stdout.reconfigure(encoding="utf-8")
@@ -216,9 +243,10 @@ def main() -> int:
             results["prefetch"] = not a.no_prefetch and not a.closed_book
             results["closed_book"] = a.closed_book
             results["guard"] = not a.no_guard
-            results["answers"] = answer_eval(library, emb, questions, prefetch=not a.no_prefetch,
+            results["repeat"] = a.repeat
+            results["answers"] = answer_eval(library, emb, questions * a.repeat, prefetch=not a.no_prefetch,
                                              closed_book=a.closed_book, guard=not a.no_guard,
-                                             with_arxiv=a.arxiv, auto_arxiv=a.auto_arxiv)
+                                             with_arxiv=a.arxiv, auto_arxiv=a.auto_arxiv, layout=a.layout)
             results["arxiv"] = a.arxiv
             ans = [r for r in results["answers"] if r["id"] != "negative"]
             neg = [r for r in results["answers"] if r["id"] == "negative"]

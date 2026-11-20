@@ -16,7 +16,9 @@ profile = "default"            # which [models.*] entry `alice` uses unless --mo
 
 # The built-in "default" profile is Qwen3.5-9B Q4_K_M at 16k context on a constrained GPU.
 # Add or override profiles here. Keys: gguf (required), ctx, ngl, n_cpu_moe, max_tokens,
-# thinking_max_tokens, reasoning_budget, extra_args, note, logit_bias, sampling, thinking_sampling.
+# thinking_max_tokens, reasoning_budget, extra_args, note, logit_bias, sampling, thinking_sampling,
+# chat_template (a .jinja file; the default profile uses templates/qwen3.5-stable-history.jinja so the
+# prompt cache works across turns - leave it out for other model families).
 
 # Example for a larger GPU setup:
 # [models.big]
@@ -50,3 +52,24 @@ auto_lookup = false
 [library]
 dir = "data/library"
 prefetch_k = 5                 # passages inserted per question (more = better recall, slower prompts)
+
+[memory]
+# Long-term memory: notes about you kept between sessions, on this computer only (/memory, /forget).
+enabled = true
+dir = "data/memory"
+save_on_exit = true            # summarise the conversation when the chat closes (a few seconds)
+prompt_facts = 25              # newest notes put in the system prompt at startup
+prompt_sessions = 3            # newest conversation summaries put in the system prompt
+compact_at = 0.75              # compact the oldest turns when the conversation fills this share of the context
+keep_turns = 2                 # newest turns always kept word for word
+
+[claude]
+# Escalation to Claude for questions the local model is too weak for. Off by default. Needs
+# pip install -e ".[claude]" and ANTHROPIC_API_KEY. ALICE always shows what would be sent and asks first.
+enabled = false
+model = "claude-opus-5-5"
+effort = "high"                # low | medium | high | xhigh | max
+max_tokens = 16000
+monthly_budget_usd = 5.0       # enforced from logs/claude_usage.jsonl
+context_turns = 4              # earlier turns sent along with the question
+suggest = true                 # offer /claude when a local answer fails a check

@@ -1,0 +1,136 @@
+{
+ "tag": "note_template",
+ "profile": "default",
+ "model": "Qwen3.5-9B-Q4_K_M.gguf",
+ "extra_args": [
+  "--chat-template-file",
+  "templates/qwen3.5-stable-history.jinja"
+ ],
+ "summary": {
+  "ttft_s": 0.8,
+  "total_s": 7.35,
+  "prompt_n": 59.5,
+  "prompt_ms": 548.0,
+  "cache_n": 4916.5,
+  "gen_tps": 37.05,
+  "server_start_s": 8.1,
+  "warmup_wait_s": 12.6,
+  "ttft_total_s": 28.3,
+  "prompt_eval_total_s": 22.6
+ },
+ "turns": [
+  {
+   "rep": 0,
+   "turn": 0,
+   "question": "What is the difference between a process and a thread? Keep it short.",
+   "ttft_s": 0.72,
+   "total_s": 8.7,
+   "prompt_n": 60,
+   "prompt_ms": 495,
+   "cache_n": 2031,
+   "gen_n": 303,
+   "gen_tps": 38.2,
+   "rounds": 1,
+   "prefetch_s": 0.21,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah, processes and threads\u2014because nothing says \"fundamental CS\" like confusing two concepts that determine whether your program crashes gracefully or just dies screaming.\n\nHere\u2019s the difference in a nutshell:\n\n- **Process**: An independent unit of execution with its own memory space. Think of it as a separate apartment building. Each process has its own CPU time, memory, and resources. Changing one doesn\u2019t affect another unless they explicitly communicate via IPC (Inter-Process Communication).\n  \n- **Thread**: A lightweight unit of execution *within* a process. Threads in the same process share the same memory space (heap, global variables), but each has its own stack and registers. They can communicate directly by sharing data, which is faster than IPC.\n\n**Key distinctions:**\n- Processes are heavier to create/switch between; threads are cheaper.\n- Process isolation = better security/stability; thread sharing = better performance for cooperative tasks.\n- If a thread crashes, the whole process dies. If a process crashes, other processes are unaffected.\n\n**When to use which?**\n- Use **processes** when you need isolation (e.g., browser tabs).\n- Use **threads** when you want speed and shared memory (e.g., parallel image processing within one app).\n\nNow, here's your check-your-understanding question:  \nIf you spawn 10 threads in a single process and one of them corrupts the heap, what happens to the other 9?"
+  },
+  {
+   "rep": 0,
+   "turn": 1,
+   "question": "What learning rate schedule does the Transformer paper use?",
+   "ttft_s": 7.46,
+   "total_s": 12.1,
+   "prompt_n": 1142,
+   "prompt_ms": 7235,
+   "cache_n": 2393,
+   "gen_n": 173,
+   "gen_tps": 37.4,
+   "rounds": 1,
+   "prefetch_s": 0.21,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "The Transformer paper uses a **warmup-and-decay schedule** for the learning rate. Specifically:\n\n- It starts by increasing the learning rate linearly for the first 4000 steps (the warmup period).\n- After that, it decreases proportionally to the inverse square root of the step number.\n\nThe formula is:  \n`lrate = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5))`  \nwith `warmup_steps = 4000`.\n\nThis gives a nice early boost (to help with initial learning) and then a smooth decay to stabilize training [L1].\n\nQuick check: If you trained for only 100 steps, what would the learning rate be relative to its peak?"
+  },
+  {
+   "rep": 0,
+   "turn": 2,
+   "question": "And how many warmup steps did they use?",
+   "ttft_s": 0.76,
+   "total_s": 2.4,
+   "prompt_n": 57,
+   "prompt_ms": 530,
+   "cache_n": 3707,
+   "gen_n": 63,
+   "gen_tps": 37.7,
+   "rounds": 1,
+   "prefetch_s": 0.21,
+   "tools": [],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "Ah yes, the hyperparameter fine-tuning dance\u2014because nothing says \"cutting-edge research\" like spending three weeks tweaking learning rate schedules.\n\nThey used **4000 warmup steps**. After that, the learning rate decays as the inverse square root of the step number [L1]."
+  },
+  {
+   "rep": 0,
+   "turn": 3,
+   "question": "With d_model = 512 and that many warmup steps, what is the learning rate at step 8000?",
+   "ttft_s": 17.81,
+   "total_s": 21.9,
+   "prompt_n": 2004,
+   "prompt_ms": 13334,
+   "cache_n": 15490,
+   "gen_n": 299,
+   "gen_tps": 36.7,
+   "rounds": 3,
+   "prefetch_s": 0.29,
+   "tools": [
+    "calculate",
+    "calculate"
+   ],
+   "notices": [
+    "Sources: [L1] Attention Is All You Need, p. 7 (5.3 Optimizer)"
+   ],
+   "reply": "At step 8000 (past the 4000-step warmup), the learning rate is in the decay phase, so:\n\n`lrate = d_model^(-0.5) * step_num^(-0.5)`  \n`= 1/\u221a512 * 1/\u221a8000`  \n`= \u221a(1/(512*8000))` \u2248 **0.000494** (or ~4.94e-4)\n\nThis matches the decay formula from the Transformer paper [L1].\n\nQuick check: What would the learning rate be at step 16,000 with the same parameters?",
+   "expected": 0.000494,
+   "correct": true
+  },
+  {
+   "rep": 0,
+   "turn": 4,
+   "question": "Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.",
+   "ttft_s": 0.84,
+   "total_s": 5.6,
+   "prompt_n": 59,
+   "prompt_ms": 566,
+   "cache_n": 6126,
+   "gen_n": 172,
+   "gen_tps": 36.2,
+   "rounds": 1,
+   "prefetch_s": 0.24,
+   "tools": [],
+   "notices": [],
+   "reply": "Palindrome checking\u2014because nothing says \"clever\" like reversing a string and comparing it to itself.\n\nHere\u2019s a clean implementation:\n\n```python\ndef is_palindrome(s: str) -> bool:\n    cleaned = s.lower().replace(\" \", \"\")\n    return cleaned == cleaned[::-1]\n```\n\n**How it works:**\n1. `s.lower()` converts the string to lowercase (ignores case).\n2. `.replace(\" \", \"\")` removes all spaces.\n3. `cleaned[::-1]` reverses the string.\n4. Compare the cleaned string with its reverse.\n\nExample: `\"A man a plan a canal Panama\"` \u2192 `\"amanaplanacanalpanama\"` \u2192 matches its reverse \u2192 `True`.\n\nQuick check: What does this return for `\"Race car!\"`?"
+  },
+  {
+   "rep": 0,
+   "turn": 5,
+   "question": "Now make it ignore punctuation too.",
+   "ttft_s": 0.68,
+   "total_s": 6.0,
+   "prompt_n": 51,
+   "prompt_ms": 454,
+   "cache_n": 6356,
+   "gen_n": 194,
+   "gen_tps": 36.2,
+   "rounds": 1,
+   "prefetch_s": 0.18,
+   "tools": [],
+   "notices": [],
+   "reply": "Ah yes, let\u2019s throw in punctuation too\u2014because nothing says \u201crobust\u201d like handling every symbol a human could possibly type.\n\nHere\u2019s the updated version:\n\n```python\nimport string\n\ndef is_palindrome(s: str) -> bool:\n    cleaned = ''.join(c.lower() for c in s if c not in string.punctuation and c != ' ')\n    return cleaned == cleaned[::-1]\n```\n\n**How it works:**\n- We filter out all characters that are either spaces or punctuation (using `string.punctuation`).\n- We keep only alphanumeric characters, convert them to lowercase, and then check if the result is a palindrome.\n\nExample: `\"Was it a car or a cat I saw?\"` \u2192 `\"wasitacaroracatisaw\"` \u2192 matches its reverse \u2192 `True`.\n\nQuick check: What does this return for `\"Able was I, ere I saw Elba!\"`?"
+  }
+ ]
+}

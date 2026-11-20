@@ -83,10 +83,13 @@ it poorly).
 | `/help` | show the commands |
 | `/quit` | leave |
 
-**Tools.**
+**Tools.** ALICE always knows the current date and local time; that needs no tool.
 - `calculate`
+- `date_calc`: days until a deadline, the weekday of a date, a date N days from now
 - `run_python`, which asks before running
+- `system_info`: your OS, Python, CPU, RAM, GPU and VRAM in use, free disk, and versions of common dev tools
 - `list_files` / `read_file` / `search_text`: read-only, and only inside the workspace
+- `git`: read-only status, diff, log and show for the workspace repository
 - `arxiv_search` / `arxiv_paper`: use the internet
 - `search_library` / `list_library`: available once your library has documents
 

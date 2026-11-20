@@ -104,12 +104,22 @@ JSON XML HTML CSS URL PDF USB IDE CLI GUI CUDA PyTorch NumPy GitHub LaTeX DFS BF
 TF IDF KNN SVM PCA DNS SSH VRAM II III IV""".split())
 
 
+# "Word number" names like "Gemma 4" also match dates ("December 2026", "Friday 12"): those are not work.
+_CALENDAR = set("""January February March April May June July August September October November December Jan Feb Mar
+Apr Jun Jul Aug Sep Sept Oct Nov Dec Monday Tuesday Wednesday Thursday Friday Saturday Sunday Week Day""".split())
+
+
+def _is_name(term: str) -> bool:
+    term = term.strip()
+    return term.strip("+-") not in _COMMON and term.split()[0] not in _CALENDAR
+
+
 def named_terms(text: str) -> list[str]:
     """Specific names in a message that the model may not know: "BQ-LoRA", "LARA++", "Gemma 4"."""
     out = []
     for m in _NAMED.finditer(text):
         term = m.group(0).strip()
-        if term.strip("+-") not in _COMMON and term not in out:
+        if _is_name(term) and term not in out:
             out.append(term)
     return out
 
@@ -125,7 +135,7 @@ def needs_reference_guard(text: str) -> bool:
     """Does the message point at a specific paper / named method the model may not know?"""
     if _WORK_WORDS.search(text):
         return True
-    return any(m.group(0).strip("+-") not in _COMMON for m in _NAMED.finditer(text))
+    return any(_is_name(m.group(0)) for m in _NAMED.finditer(text))
 
 
 def reference_guard(arxiv_available: bool = False) -> str:
@@ -147,7 +157,14 @@ TOOL_GUIDES = {
                     "arXiv id the tool returned. If it finds nothing, say the paper could not be found. Never "
                     "cite a paper you have not verified this way or are not certain of. If library passages "
                     "already cover the paper, do not search arXiv for it.",
+    "date_calc": "- date_calc: for anything about dates (days until a deadline, what weekday a date falls on, the "
+                 "date N days from now); never count days yourself. The current local time is given in the note "
+                 "on each message.",
+    "system_info": "- system_info: the student's OS, Python, CPU, RAM, GPU/VRAM, disk and installed tool versions. "
+                   "Check it before answering questions about their machine or setup instead of guessing.",
     "read_file": "- list_files / read_file / search_text: read the student's code before commenting on it.",
+    "git": "- git: read-only status / diff / log / show of the student's workspace repository; use it when they "
+           "ask about their changes or recent commits.",
     "search_library": "- search_library / list_library: the student's own papers and notes. For any question "
                       "about them (or that they could answer), search first, answer ONLY from the returned "
                       "passages, and cite every claim inline with its label, e.g. [L2]. Never invent labels. "
@@ -195,12 +212,18 @@ NOTE_PREFIX = "[Note from ALICE's system, not from the student:"
 
 
 def turn_note(opener_style: str | None = None, guard: bool = False, arxiv_available: bool = False,
-              extra=()) -> str:
+              extra=(), now: datetime.datetime | None = None) -> str:
     """Per-reply instructions, appended to the student's message and kept in the history with it, so the
     prompt prefix stays byte-identical from turn to turn. (Qwen3.5's chat template rejects system messages
     after the first one, so they can't go in a separate message.) `extra`: one-off notes, e.g. something
-    the student just asked ALICE to remember."""
+    the student just asked ALICE to remember. `now`: the local time, so ALICE always knows it (it can't go
+    in the system prompt without breaking the prompt cache every turn)."""
     parts = list(extra)
+    if now is not None:
+        offset = now.strftime("%z")
+        tz = f"UTC{offset[:3]}:{offset[3:]}" if offset else "local time"
+        parts.append(f"Local time now: {now.strftime('%a %d %b %Y, %H:%M')} ({tz}); mention it only if it is "
+                     "relevant.")
     if guard:
         parts.append(reference_guard(arxiv_available).strip())
     if opener_style:

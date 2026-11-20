@@ -74,8 +74,9 @@ class ToolBox:
 
 
 def default_toolbox(workspace=None, python_exe=None) -> ToolBox:
-    from . import arxiv, calc, files, pyexec
-    box = ToolBox().add(calc.TOOL, pyexec.make_tool(python_exe), arxiv.SEARCH, arxiv.PAPER)
+    from . import arxiv, calc, files, pyexec, system
+    box = ToolBox().add(calc.TOOL, system.DATE_TOOL, pyexec.make_tool(python_exe),
+                        system.make_system_tool(workspace), arxiv.SEARCH, arxiv.PAPER)
     if workspace is not None:
-        box.add(*files.make_tools(workspace))
+        box.add(*files.make_tools(workspace), system.make_git_tool(workspace))
     return box

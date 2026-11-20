@@ -485,7 +485,7 @@ class ChatSession:
         # Per-reply instructions travel with the question (and stay in the history), so the system prompt and
         # everything before this turn are byte-identical to the last request and come from the server's cache.
         convo.add_user(text + persona.turn_note(style, guard, arxiv_available="arxiv_search" in self.tool_names,
-                                                extra=extra))
+                                                extra=extra, now=datetime.datetime.now().astimezone()))
         convo.add(*prefetched, *looked_up)
         out = TurnOutcome(notices=self._take_pending_notices())
         try:

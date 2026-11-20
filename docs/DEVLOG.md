@@ -683,3 +683,16 @@ No regression; citations and honesty slightly better (single runs, so "no worse"
 - [ ] Memory: search notes by embedding once they grow; update facts that change; memory eval with several seeds.
 - [ ] Library turns still spend ~7 s reading passages: measure accuracy vs. fewer/shorter passages.
 - [ ] Flag numeric answers whose arithmetic never went through the calculator (the calc-set misses) - a natural trigger for re-asking with the calculator or for /claude.
+
+---
+
+## 2026-11-20 - Time, dates, system info and git for ALICE
+
+- **Local time, always:** the current date/time (with UTC offset) travels in the turn note of every message, so ALICE knows it without a tool call. It can't go in the system prompt: a value that changes every turn there would break the prompt cache again.
+- **New local tools** (`tools/system.py`):
+  - `date_calc`: weekday / ISO week of a date, days and weekdays between two dates, the date N days away. For deadlines - the 9B shouldn't count days in its head any more than it multiplies there.
+  - `system_info`: OS, Python, CPU, RAM, NVIDIA GPU and VRAM in use, free disk, and versions of common developer tools. Version checks run only for an allowlist (python, git, gcc, node, nvcc, cargo, ...), never a program the model names freely.
+  - `git`: read-only status / diff / diff_staged / log / show in the workspace. Hardened against the repository's own config: no external diff or textconv programs, no fsmonitor hook, no pager, refs can't start with "-" (no option injection), paths must stay in the workspace.
+- **Live check with the real model** (4 questions): the time came straight from the note; "days until 12 December 2026" called `date_calc` (22 days, a Saturday); "would a 14B model at 4-bit fit on my GPU?" called `system_info`, read the GPU's VRAM and what ALICE's own model already uses, and correctly said no; "what have I changed since the last commit?" called `git diff` and summarised it, but invented one method name and (using `diff`) missed new untracked files.
+- **Snag found by it:** "12 December 2026" matched the "Word number" pattern meant for names like "Gemma 4", so the unknown-paper guard fired on a date question and the reply ended with an offer to look up "a paper tied to that date". Month and weekday names no longer count as named work (regression test).
+- Tests: 155 passing.

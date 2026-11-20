@@ -19,6 +19,7 @@ import threading
 import time
 
 from rich.syntax import Syntax
+from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -52,6 +53,26 @@ COMMANDS = {                   # shown as hints while typing a /command
 }
 KEYS_HELP = ("Keys: Enter send · Shift+Enter new line · Up/Down earlier messages · Esc stop · Ctrl+O copy "
              "answer · Ctrl+G ask Claude · Ctrl+T thinking · Ctrl+R new conversation · Ctrl+L clear · Ctrl+Q quit")
+PROGRAM_LINES = 200            # a program's box shows its last 200 lines
+
+
+def program_text(parts: list[tuple[str, str]], max_lines: int = PROGRAM_LINES) -> Text:
+    """A program's output so far (stderr in red), the last `max_lines` lines of it."""
+    lines: list[list[str]] = []                        # [stream, line]
+    for stream, chunk in parts:
+        for piece in chunk.splitlines(keepends=True):
+            if lines and lines[-1][0] == stream and not lines[-1][1].endswith("\n"):
+                lines[-1][1] += piece                  # the rest of a line printed in two goes
+            else:
+                lines.append([stream, piece])
+    text = Text()
+    if len(lines) > max_lines:
+        text.append(f"... {len(lines) - max_lines} earlier lines\n", style="dim")
+        lines = lines[-max_lines:]
+    for stream, line in lines:
+        text.append(line, style="red" if stream == "stderr" else "")
+    text.rstrip()
+    return text
 
 
 class ConfirmRun(ModalScreen[bool]):
@@ -159,6 +180,9 @@ class AliceApp(App):
     .alice { margin: 1 10 0 0; padding: 0 1; border: round $success; }
     .claude { margin: 1 10 0 0; padding: 0 1; border: round $warning; }
     .tool { color: $text-muted; margin: 0 0 0 2; }
+    .program { margin: 0 0 0 2; padding: 0 1; border: round $secondary; border-subtitle-color: $text-muted; }
+    .program.ok { border-subtitle-color: $success; }
+    .program.failed { border-subtitle-color: $error; }
     .sources { color: $text-muted; margin: 0 0 0 2; }
     .warning { color: $warning; margin: 0 0 0 2; }
     .escalate { color: $accent; margin: 0 0 0 2; }
@@ -291,6 +315,25 @@ class AliceApp(App):
         self._mount(w)
         return w
 
+    def add_program(self, title: str) -> Static:
+        """A program ALICE runs: a box that fills with its output while it runs."""
+        w = Static("", classes="program", markup=False)
+        w.border_title = f"▶ {title} program"
+        w.border_subtitle = "starting..."
+        self._mount(w)
+        return w
+
+    def update_program(self, w: Static, parts: list[tuple[str, str]], status: str | None = None,
+                       ok: bool | None = None) -> None:
+        follow = self._following()
+        w.update(program_text(parts) if parts or ok is None else Text("(no output)", style="dim"))
+        if status:
+            w.border_subtitle = status
+        if ok is not None:
+            w.add_class("ok" if ok else "failed")
+        if follow:
+            self.log_view.scroll_end(animate=False)
+
     def add_user(self, text: str) -> None:
         w = Static(text, classes="user", markup=False)
         w.border_title = "you"
@@ -415,7 +458,8 @@ class AliceApp(App):
                 ui.set_phase(f"finishing {self.session.background}")
             outcome = self.session.ask(text, on_event=ui.event, on_tool_start=ui.tool_start,
                                        on_tool=ui.tool_done, confirm=self.confirm_from_thread,
-                                       on_library=ui.library, on_arxiv=ui.arxiv, cancel=self.cancel)
+                                       on_library=ui.library, on_arxiv=ui.arxiv, on_program=ui.program,
+                                       cancel=self.cancel)
             ui.finish(outcome)
         except Exception as e:                            # never leave the UI stuck in "busy"
             ui._call(self.add_line, f"error: {type(e).__name__}: {e}", "warning")
@@ -554,6 +598,10 @@ class _TurnRenderer:
         self.last_update = 0.0
         self.thinking: Static | None = None
         self.reasoning_chars = 0
+        self.box: Static | None = None                    # the running program's box
+        self.box_parts: list[tuple[str, str]] = []
+        self.box_title = ""
+        self.shown_program = False                        # the current tool call has a box (it shows the result)
 
     def _call(self, fn, *args):
         if self.app.closing:
@@ -612,12 +660,32 @@ class _TurnRenderer:
         self._flush()
         self.set_phase(f"using {name}")
         self.md, self.text, self.filter = None, "", StreamFilter()      # next round gets a new bubble
+        self.shown_program = False
         self._call(self.app.add_line, f"▸ {name}: {tool_summary(name, raw_args)}", "tool")
 
     def tool_done(self, tr: ToolResult) -> None:
         mark = "declined" if tr.declined else ("ok" if tr.ok else "failed")
         self.set_phase("reading the result")
-        self._call(self.app.add_line, f"  ◂ {mark}: {_short(tr.output, 200)}", "tool")
+        if not self.shown_program:
+            self._call(self.app.add_line, f"  ◂ {mark}: {_short(tr.output, 200)}", "tool")
+
+    def program(self, e: dict) -> None:
+        """Live events of a program ALICE runs (coderun batches the output, ~10 updates a second)."""
+        if e["event"] == "start":
+            self.shown_program, self.box_parts, self.box_title = True, [], e["title"]
+            self.set_phase(f"running the {e['title']} program")
+            self.box = self._call(self.app.add_program, e["title"])
+        elif self.box is None:
+            return
+        elif e["event"] == "phase":
+            self.set_phase(f"{e['text']} the {self.box_title} program")
+            self._call(self.app.update_program, self.box, list(self.box_parts), f"{e['text']}...")
+        elif e["event"] == "out":
+            self.box_parts.append((e["stream"], e["text"]))
+            self._call(self.app.update_program, self.box, list(self.box_parts), "running...")
+        elif e["event"] == "end":
+            self._call(self.app.update_program, self.box, list(self.box_parts), e["status"], e["ok"])
+            self.box = None
 
     def claude_status(self, what: str) -> None:
         self.set_phase("Claude is thinking" if what == "thinking" else what)

@@ -284,6 +284,9 @@ def main() -> int:
                 print(f"  {status:7} {title} ({n} chunks, {time.time() - last[0]:.0f} s)", flush=True)
                 last[0] = time.time()
             lib.rebuild(emb, doc_ids=old_books, on_done=done)
+        dropped = lib.drop_index_pages()                   # libraries built before index pages were skipped
+        if dropped:
+            print(f"dropped {dropped} passages from back-of-book indexes", flush=True)
     finally:
         emb.stop()
     print(f"done in {(time.time() - t0) / 60:.1f} min; the library has {len(lib.documents())} documents")

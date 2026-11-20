@@ -36,8 +36,11 @@ def tool_summary(name: str, raw_args: str) -> str:
     except json.JSONDecodeError:
         args = raw_args
     if name in ("run_python", "run_code"):
-        lang = args.get("language", "python") if isinstance(args, dict) else "python"
-        return f"({lang} code below)"
+        from .tools.coderun import ALIASES, NAMES
+        lang = str(args.get("language", "python")) if isinstance(args, dict) else "python"
+        code = str(args.get("code", "")) if isinstance(args, dict) else ""
+        lines = len(code.strip().splitlines())
+        return f"a {NAMES.get(ALIASES.get(lang.lower(), ''), lang)} program, {lines} line{'s' * (lines != 1)}"
     shown = next(iter(args.values()), "") if isinstance(args, dict) and len(args) == 1 else args
     return _short(shown)
 
@@ -172,6 +175,9 @@ class _Printer:
         self.filter = StreamFilter()
         self.prompt = prompt
         self.begun = False
+        self.shown_program = False       # the current tool call printed a program's output
+        self.program_line_open = False
+        self.program_stream = "stdout"
 
     def begin(self) -> None:
         """Print the 'alice> ' prefix once, just before the first output."""
@@ -223,11 +229,32 @@ class _Printer:
     def tool_start(self, name: str, raw_args: str) -> None:
         self.begin()
         self.newline()
+        self.shown_program = False
         print(f"  [{name}] {tool_summary(name, raw_args)}", flush=True)
 
     def tool_done(self, tr: ToolResult) -> None:
         mark = "declined" if tr.declined else ("ok" if tr.ok else "failed")
-        print(f"  [{tr.name} {mark}] {_short(tr.output, 160)}", flush=True)
+        if not self.shown_program:                        # a program's output was already shown in full
+            print(f"  [{tr.name} {mark}] {_short(tr.output, 160)}", flush=True)
+
+    def program(self, e: dict) -> None:
+        """A program ALICE runs, printed as it runs: ┌ title, │ output, └ exit status."""
+        if e["event"] == "start":
+            self.shown_program, self.program_line_open = True, False
+            print(f"  ┌ {e['title']} program", flush=True)
+        elif e["event"] == "out":
+            if self.program_line_open and e["stream"] != self.program_stream:
+                print()                                   # stdout and stderr don't share a line
+                self.program_line_open = False
+            self.program_stream = e["stream"]
+            for piece in e["text"].splitlines(keepends=True):
+                print(("" if self.program_line_open else "  │ ") + piece.rstrip("\n"),
+                      end="\n" if piece.endswith("\n") else "", flush=True)
+                self.program_line_open = not piece.endswith("\n")
+        elif e["event"] == "end":
+            if self.program_line_open:
+                print()
+            print(f"  └ {e['status']}", flush=True)
 
 
 def _confirm(tool: Tool, args: dict) -> bool:
@@ -246,7 +273,7 @@ def _confirm(tool: Tool, args: dict) -> bool:
 def _respond(session: ChatSession, text: str, args) -> TurnOutcome:
     printer = _Printer(args.show_thinking, prompt="alice> ")
     outcome = session.ask(text, on_event=printer.event, on_tool=printer.tool_done,
-                          on_tool_start=printer.tool_start, confirm=_confirm,
+                          on_tool_start=printer.tool_start, confirm=_confirm, on_program=printer.program,
                           on_library=lambda places: print("  [library] " + "; ".join(places)),
                           on_arxiv=lambda q: print(f"  [arxiv] searching for '{q}' (sent to arxiv.org)"))
     printer.begin()

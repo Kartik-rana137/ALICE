@@ -1,6 +1,7 @@
 """Headless test of the chat box (no model): streaming, tool lines, the run_python dialog, notices,
 leaked-markup filtering, commands and the Stop key."""
 import asyncio
+import json
 import threading
 
 from textual.widgets import Markdown, Static, TextArea
@@ -10,7 +11,8 @@ from alice.config import Profile
 from alice.llm import Event
 from alice.session import CommandResult, Notice, TurnOutcome
 from alice.tools import Tool, ToolResult
-from alice.tui import AliceApp, ConfirmEscalation, ConfirmRun
+from alice.tools.coderun import live_output, run_code
+from alice.tui import AliceApp, ConfirmEscalation, ConfirmRun, program_text
 
 
 class FakeSession:
@@ -41,7 +43,8 @@ class FakeSession:
             return CommandResult(f"(thinking {'on' if self.thinking else 'off'})")
         return CommandResult("(conversation cleared)", reset=True) if text == "/reset" else CommandResult("help text")
 
-    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, cancel, on_arxiv=None):
+    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, cancel, on_arxiv=None,
+            on_program=None):
         self.asked.append(text)
         if self.block is not None:                       # simulate a long reply until Stop is pressed
             on_event(Event("content", "Thinking about it"))
@@ -50,10 +53,14 @@ class FakeSession:
             return TurnOutcome(interrupted=True, notices=[Notice("info", "(stopped; this exchange was not kept)")])
         on_library(["Fake Paper, p. 1"])
         on_event(Event("content", "Let me check **6 x 7**."))
-        on_tool_start("run_python", '{"code": "print(6*7)"}')
-        self.confirmed = confirm(Tool("run_python", "", {}, lambda code: "", needs_confirmation=True),
-                                 {"code": "print(6*7)"})
-        on_tool(ToolResult("run_python", {"code": "print(6*7)"}, "exit code 0\n42", True))
+        args = {"language": "python", "code": "import sys\nprint(6*7)\nprint('careful', file=sys.stderr)"}
+        on_tool_start("run_code", json.dumps(args))
+        self.confirmed = confirm(Tool("run_code", "", {}, lambda **k: "", needs_confirmation=True), args)
+        if self.confirmed:                                # the real runner, reporting to the chat box
+            with live_output(on_program, cancel):
+                on_tool(ToolResult("run_code", args, run_code(**args), True))
+        else:
+            on_tool(ToolResult("run_code", args, "declined", False, declined=True))
         on_event(Event("content", "It is **42** [L1]. <tool"))
         on_event(Event("content", "_call>junk</tool_call>"))
         on_event(Event("finish", "stop", {"predicted_n": 9, "predicted_per_second": 30.0}))
@@ -95,12 +102,24 @@ def test_chat_box_full_turn_with_dialog_and_notices():
             assert "What is 6*7?" in texts                              # user bubble
             assert any(t.startswith("library: Fake Paper") for t in texts)
             assert "Let me check **6 x 7**." in texts                    # first round, before the tool
-            assert any(t.startswith("▸ run_python") for t in texts) and any("◂ ok" in t for t in texts)
+            assert any(t.startswith("▸ run_code") for t in texts)
+            box = app.query_one(".program", Static)                     # the program's own output, in full
+            assert str(box.content) == "42\ncareful" and box.border_title == "▶ Python program"
+            assert box.border_subtitle.startswith("exit code 0") and box.has_class("ok")
+            assert not any("◂ ok" in t for t in texts)                  # no second, shortened copy
             assert "It is **42** [L1]. " in texts                        # leaked <tool_call> markup filtered
             assert not any("tool_call" in t for t in texts)
             assert "Sources: [L1] Fake Paper, p. 1" in texts
             assert "last 1.2s" in str(app.query_one("#status", Static).content)
     asyncio.run(scenario())
+
+
+def test_program_text_keeps_streams_apart_and_shows_the_last_lines():
+    text = program_text([("stdout", "a\nb"), ("stdout", "c\n"), ("stderr", "oops\n"), ("stdout", "d\n")])
+    assert text.plain == "a\nbc\noops\nd"
+    assert [s.style for s in text.spans] == ["red"]
+    long = program_text([("stdout", "".join(f"{i}\n" for i in range(250)))], max_lines=200)
+    assert long.plain.startswith("... 50 earlier lines\n50\n") and long.plain.endswith("249")
 
 
 def test_chat_box_commands_and_declining_code():

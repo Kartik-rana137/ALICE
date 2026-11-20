@@ -17,11 +17,14 @@ const COMMANDS = {
   "/help": "all commands",
 };
 const RUNNABLE = { python: "python", py: "python", c: "c", cpp: "cpp", "c++": "cpp", cc: "cpp", java: "java" };
+const LANG_NAMES = { python: "Python", c: "C", cpp: "C++", java: "Java" };
 const MATH_RX = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<![\\$\w])\$(?!\s)([^$\n]+?)(?<!\s)\$(?![\w$])/g;
 
 let ws = null, state = { ready: false }, welcomed = false, current = null, thinkingEl = null;
 let phase = "", phaseStart = performance.now(), renderTimer = null, blockSeq = 0;
 let history = [], histPos = null, draft = "";
+const programs = {};          // run id -> the console panel of a program ALICE runs
+let toolShownProgram = false; // the current tool call has a console panel (it shows the result)
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -45,13 +48,13 @@ function handle(m) {
     case "delta": appendDelta(m.text, m.target); break;
     case "reasoning": showThinking(m.chars); break;
     case "phase": phase = m.text; break;
-    case "tool_start": finishSegment(); addLine("tool", `▸ ${m.name}: ${m.summary}`); break;
-    case "tool_done": addLine("tool", `  ◂ ${m.mark}: ${short(m.output, 240)}`); break;
+    case "tool_start": finishSegment(); toolShownProgram = false; addLine("tool", `▸ ${m.name}: ${m.summary}`); break;
+    case "tool_done": if (!toolShownProgram) addLine("tool", `  ◂ ${m.mark}: ${short(m.output, 240)}`); break;
+    case "program": if (m.block) blockProgram(m); else program(m); break;
     case "notice": addNotice(m.kind, m.text); break;
     case "confirm": askRun(m); break;
     case "claude_preview": askClaude(m); break;
     case "turn_end": endTurn(m); break;
-    case "run_result": showRunResult(m); break;
   }
 }
 
@@ -199,23 +202,88 @@ function enhanceCode(root, final) {
   });
 }
 
+// ---------------------------------------------------------------- programs
+function screenEl() { return Object.assign(document.createElement("pre"), { className: "screen" }); }
+function appendOut(screen, stream, text) {
+  const followLog = atBottom();
+  const followScreen = screen.scrollHeight - screen.scrollTop - screen.clientHeight < 30;
+  const span = document.createElement("span");
+  if (stream === "stderr") span.className = "err";
+  span.textContent = text;
+  screen.appendChild(span);
+  if (followScreen) screen.scrollTop = screen.scrollHeight;
+  if (followLog) log.scrollTop = log.scrollHeight;
+}
+function consoleButton(language, code) {
+  if (!state.console || !LANG_NAMES[language]) return null;
+  const b = Object.assign(document.createElement("button"), { textContent: "Open in terminal",
+    title: "Run it in its own console window, where you can type into it" });
+  b.onclick = () => send({ type: "console", language, code });
+  return b;
+}
+
+// A program ALICE runs (after you approved it): a console panel that fills while it runs.
+function program(m) {
+  if (m.event === "start") {
+    toolShownProgram = true;
+    const el = div("program", `<div class="bar"><span class="title">▶ ${esc(m.title)} program</span>
+      <span class="state">starting...</span></div>`);
+    const screen = el.appendChild(screenEl());
+    const term = consoleButton(m.language, m.code);
+    if (term) el.querySelector(".bar").appendChild(term);
+    programs[m.run] = { el, screen, state: el.querySelector(".state") };
+    add(el, true);
+    return;
+  }
+  const p = programs[m.run];
+  if (!p) return;
+  if (m.event === "phase") p.state.textContent = `${m.text}...`;
+  else if (m.event === "out") appendOut(p.screen, m.stream, m.text);
+  else if (m.event === "end") {
+    p.state.textContent = m.status;
+    p.el.classList.add(m.ok ? "ok" : "failed");
+    if (!p.screen.textContent) p.screen.textContent = "(no output)";
+    delete programs[m.run];
+  }
+}
+
+// A code block you run yourself: input box, Run/Stop, Open in terminal, output streaming below.
 function toggleRunPanel(box, language, code) {
   let panel = box.querySelector(".runpanel");
   if (panel) { panel.remove(); return; }
-  const id = `b${++blockSeq}`;
-  panel = div("runpanel", `<textarea placeholder="Input for the program, if it reads any (one line per prompt)"></textarea>
-    <div class="controls"><button class="primary">Run ${esc(language)}</button><span>runs on this computer, 20 s limit</span></div>`);
-  panel.dataset.block = id;
-  panel.querySelector("button").onclick = () => {
-    const out = panel.querySelector("pre.out") || panel.appendChild(Object.assign(document.createElement("pre"), { className: "out" }));
-    out.textContent = "running...";
+  const id = `b${++blockSeq}`, name = LANG_NAMES[language] || language;
+  panel = div("runpanel", `<textarea placeholder="Input for the program, if it reads any (typed in advance, one line per prompt)"></textarea>
+    <div class="controls"><button class="primary run">Run ${esc(name)}</button>
+    <span class="state">runs on this computer, 20 s limit</span></div>`);
+  panel.dataset.block = id; panel.dataset.name = name;
+  const runBtn = panel.querySelector("button.run");
+  runBtn.onclick = () => {
+    if (runBtn.dataset.running) { send({ type: "stop_run", block: id }); return; }
+    const screen = panel.querySelector("pre.screen") || panel.appendChild(screenEl());
+    screen.textContent = "";
+    runBtn.dataset.running = "1"; runBtn.textContent = "Stop";
     send({ type: "run", block: id, language, code, stdin: panel.querySelector("textarea").value });
   };
+  const term = consoleButton(language, code);
+  if (term) runBtn.after(term);
   box.appendChild(panel);
+  panel.querySelector("textarea").focus();
 }
-function showRunResult(m) {
-  const out = document.querySelector(`.runpanel[data-block="${m.block}"] pre.out`);
-  if (out) out.textContent = m.output;
+function blockProgram(m) {
+  const panel = document.querySelector(`.runpanel[data-block="${m.block}"]`);
+  if (!panel) return;
+  const st = panel.querySelector(".state"), runBtn = panel.querySelector("button.run");
+  const screen = panel.querySelector("pre.screen") || panel.appendChild(screenEl());
+  if (m.event === "start") st.textContent = "starting...";
+  else if (m.event === "phase") st.textContent = `${m.text}...`;
+  else if (m.event === "out") appendOut(screen, m.stream, m.text);
+  else if (m.event === "end") {
+    st.textContent = m.status;
+    st.className = `state ${m.ok ? "ok" : "failed"}`;
+    if (!screen.textContent) screen.textContent = "(no output)";
+    delete runBtn.dataset.running;
+    runBtn.textContent = `Run ${panel.dataset.name}`;
+  }
 }
 
 function endTurn(m) {
@@ -242,7 +310,7 @@ function askRun(m) {
   const highlighted = (() => { try { return hljs.highlight(m.code, { language: m.language === "cpp" ? "cpp" : m.language }).value; } catch { return esc(m.code); } })();
   const stdin = m.stdin ? `<p>Input it will get:</p><pre>${esc(m.stdin)}</pre>` : "";
   dialog(`ALICE wants to run ${m.language} code`,
-    `<p>It runs as you, on this computer, in a temporary folder (20 s limit).</p><pre><code>${highlighted}</code></pre>${stdin}`,
+    `<p>It runs as you, on this computer, in a temporary folder (20 s limit). You'll see its output as it runs.</p><pre><code>${highlighted}</code></pre>${stdin}`,
     "Run it", "Don't run", (ok) => send({ type: "confirm_reply", id: m.id, ok }));
 }
 function askClaude(m) {

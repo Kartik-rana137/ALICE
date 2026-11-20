@@ -36,13 +36,17 @@ class FakeSession:
                                  ask="Give me a short overview of this document.")
         return CommandResult("help text" if text == "/help" else "(conversation cleared)")
 
-    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, on_arxiv, cancel):
+    def ask(self, text, *, on_event, on_tool_start, on_tool, confirm, on_library, on_arxiv, on_program, cancel):
         self.asked.append(text)
         on_event(Event("content", "Let me **check**."))
         if "run" in text:
             on_tool_start("run_code", '{"language": "python", "code": "print(6*7)"}')
             self.confirmed = confirm(Tool("run_code", "", {}, lambda **k: "", needs_confirmation=True),
                                      {"language": "python", "code": "print(6*7)"})
+            if self.confirmed:                            # the real run_code, reporting to the window
+                from alice.tools.coderun import live_output, run_code
+                with live_output(on_program, cancel):
+                    run_code("python", "print(6*7)")
         on_event(Event("content", " It is 42."))
         on_event(Event("finish", "stop", {}))
         result = TurnResult(reply="Let me **check**. It is 42.", messages=[], finish="stop", seconds=1.5,
@@ -110,8 +114,12 @@ def test_running_code_asks_the_window_first(gui):
         assert ask["language"] == "python" and ask["code"] == "print(6*7)"
         assert any(m["type"] == "tool_start" and m["name"] == "run_code" for m in seen)
         ws.send_json({"type": "confirm_reply", "id": ask["id"], "ok": True})
-        until(ws, "turn_end")
+        _, seen = until(ws, "turn_end")
         assert session.confirmed is True
+        program = [m for m in seen if m["type"] == "program"]       # the student sees the program run
+        assert [m["event"] for m in program][0] == "start" and program[-1]["event"] == "end"
+        assert program[0]["code"] == "print(6*7)" and program[-1]["ok"] and "block" not in program[0]
+        assert "".join(m["text"] for m in program if m["event"] == "out") == "42\n"
 
 
 def test_commands_and_reading_an_uploaded_file(gui, tmp_path):
@@ -130,10 +138,36 @@ def test_commands_and_reading_an_uploaded_file(gui, tmp_path):
         assert session.asked == ["Give me a short overview of this document."]
 
 
-def test_a_code_block_can_be_run_from_the_window(gui):
+def test_a_code_block_can_be_run_and_stopped_from_the_window(gui):
     client, _ = gui
     with client.websocket_connect(f"/ws?token={TOKEN}", headers=ORIGIN) as ws:
         ws.send_json({"type": "run", "block": "b1", "language": "python", "code": "print(input()[::-1])",
                       "stdin": "ECILA\n"})
-        result, _ = until(ws, "run_result")
-        assert result["block"] == "b1" and result["output"].endswith("ALICE")
+        seen = []
+        while not (seen and seen[-1]["type"] == "program" and seen[-1]["event"] == "end"):
+            seen.append(ws.receive_json())
+        out = [m for m in seen if m["type"] == "program"]
+        assert all(m["block"] == "b1" for m in out) and out[-1]["ok"]
+        assert "".join(m["text"] for m in out if m["event"] == "out") == "ALICE\n"
+        ws.send_json({"type": "run", "block": "b2", "language": "python", "code": "import time\nprint('go')\ntime.sleep(30)"})
+        while True:
+            m = ws.receive_json()
+            if m["type"] == "program" and m["event"] == "out":
+                break
+        ws.send_json({"type": "stop_run", "block": "b2"})
+        while True:
+            m = ws.receive_json()
+            if m["type"] == "program" and m["event"] == "end":
+                assert m["block"] == "b2" and m["status"] == "stopped by the student"
+                break
+
+
+def test_open_in_terminal(gui, monkeypatch):
+    client, _ = gui
+    opened = []
+    monkeypatch.setattr(server.coderun, "open_in_console",
+                        lambda language, code: opened.append((language, code)) or "opened the C program in a console window")
+    with client.websocket_connect(f"/ws?token={TOKEN}", headers=ORIGIN) as ws:
+        ws.send_json({"type": "console", "language": "c", "code": "int main(void){return 0;}"})
+        info, _ = until(ws, "info")
+        assert info["text"] == "(opened the C program in a console window)" and opened == [("c", "int main(void){return 0;}")]

@@ -23,7 +23,7 @@ from .agent import STUCK_REPLY, TurnResult, run_turn
 from .conversation import Conversation, turns_text
 from .llm import Event, LLMError, LlamaServer, count_tokens, prime_prefix, warm_up
 from .render import ascii_emoji
-from .tools import Tool, ToolBox, ToolResult, calc, default_toolbox
+from .tools import Tool, ToolBox, ToolResult, calc, coderun, default_toolbox
 from .transcript import Transcript
 
 # Claims of having searched or run something. Deliberately excludes "checked"/"verified", which models
@@ -554,7 +554,9 @@ class ChatSession:
             confirm: Callable[[Tool, dict], bool] | None = None,
             on_library: Callable[[list[str]], None] | None = None,
             on_arxiv: Callable[[str], None] | None = None,
+            on_program: Callable[[dict], None] | None = None,
             cancel: threading.Event | None = None) -> TurnOutcome:
+        """`on_program` gets the live events of programs ALICE runs (start, output, end; see coderun)."""
         convo = self.convo
         if convo is None:
             raise RuntimeError("ChatSession.ask() called before start()")
@@ -592,9 +594,10 @@ class ChatSession:
         convo.add(*prefetched, *looked_up)
         out = TurnOutcome(notices=self._take_pending_notices())
         try:
-            out.result = run_turn(convo.messages(), self.profile, self.toolbox, thinking=self.thinking,
-                                  on_event=on_event, on_tool=on_tool, on_tool_start=on_tool_start,
-                                  confirm=confirm, cancel=cancel)
+            with coderun.live_output(on_program, cancel):
+                out.result = run_turn(convo.messages(), self.profile, self.toolbox, thinking=self.thinking,
+                                      on_event=on_event, on_tool=on_tool, on_tool_start=on_tool_start,
+                                      confirm=confirm, cancel=cancel)
             out.interrupted = out.result.finish == "interrupted"
         except KeyboardInterrupt:
             out.interrupted = True

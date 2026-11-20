@@ -75,9 +75,12 @@ The options work for all three front ends.
   the commands.
 - **Stopping:** Esc stops a reply.
 - **Files:** drop a PDF, Word or PowerPoint file on the window, or use **Add file**.
-- **Code blocks:** each has **Copy** and **Run**. Run opens a box for the program's input and shows the output
-  underneath.
-- **When ALICE wants to run code herself,** the window shows you the code and its input first.
+- **Code blocks:** each has **Copy** and **Run**. Run opens a box for the program's input, and the output
+  appears underneath while the program runs. Run turns into **Stop** while it's running.
+- **When ALICE wants to run code herself,** the window shows you the code and its input first. If you approve,
+  the program gets its own panel in the chat: output appears live (errors in red), then the exit code.
+- **Open in terminal** (on both panels) runs the program in its own console window. Use it for programs
+  you want to type into yourself.
 - **Header:** **Thinking** switches step-by-step reasoning, **Ask Claude** (when Claude escalation is on)
   passes the last question on, and **New chat** starts over.
 
@@ -116,7 +119,8 @@ it poorly).
 - `calculate`
 - `date_calc`: days until a deadline, the weekday of a date, a date N days from now
 - `run_code`: Python, C (C17), C++ (C++20) or Java, with optional input. It asks before every run, and has a
-  20 s limit and a minimal environment.
+  20 s limit and a minimal environment. You see the program's output live in every chat (a panel in the
+  window, a box in the chat box, framed lines in the line chat), and Esc stops it.
 - `system_info`: your OS, Python, CPU, RAM, GPU and VRAM in use, free disk, and versions of common dev tools
 - `list_files` / `read_file` / `search_text` / `read_document` (PDF, Word, PowerPoint): read-only, and only
   inside the workspace
@@ -247,6 +251,7 @@ Your data stays in gitignored folders:
 - the library in `data/library/`
 - memory in `data/memory/`
 - files dropped on the window in `data/uploads/`
+- programs opened in a console window in `data/runs/`, deleted after a day
 
 ## Tests and evaluations
 

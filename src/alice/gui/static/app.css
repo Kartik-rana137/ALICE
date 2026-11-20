@@ -84,8 +84,20 @@ button:disabled { opacity: .45; cursor: default; }
                      border: 1px solid var(--line); border-radius: 6px; font: 13px "Cascadia Code", Consolas, monospace;
                      padding: 6px 8px; }
 .runpanel .controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
-.runpanel pre.out { margin: 8px 0 0; padding: 8px 10px; background: var(--code-bg); border-radius: 6px;
-                    white-space: pre-wrap; font: 12.5px "Cascadia Code", Consolas, monospace; max-height: 320px; overflow: auto; }
+.runpanel pre.screen { margin: 8px 0 0; border: 1px solid var(--line); border-radius: 6px; }
+.state.ok, .program.ok .state { color: var(--green); }
+.state.failed, .program.failed .state { color: var(--red); }
+
+/* a program running: a small terminal in the conversation */
+pre.screen { margin: 0; padding: 10px 12px; background: var(--code-bg); color: var(--text); max-height: 360px; overflow: auto;
+             white-space: pre-wrap; word-break: break-word; font: 12.5px/1.45 "Cascadia Code", Consolas, monospace; }
+pre.screen .err { color: var(--red); }
+.program { margin: 8px auto; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.program .bar { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 12px; background: var(--panel-2);
+                font-size: 12px; color: var(--muted); }
+.program .bar .title { color: var(--text); font-weight: 600; }
+.program .bar .state { flex: 1; }
+.program .bar button { padding: 2px 10px; font-size: 12px; }
 .tool, .notice { margin: 4px auto; font-size: 13px; padding: 0 4px; }
 .tool { color: var(--muted); font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; white-space: pre-wrap; }
 .notice.sources, .notice.memory, .notice.info { color: var(--muted); }

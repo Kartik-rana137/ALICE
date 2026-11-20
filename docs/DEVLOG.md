@@ -784,6 +784,7 @@ Goals: old-school ASCII emoticons instead of emoji; a less excited tone, more li
 - **Toolchains without admin rights:** `scripts/setup_toolchains.py` puts a portable GCC (WinLibs, UCRT) and Microsoft's OpenJDK 21 into `tools/` (gitignored), each checked against its published SHA-256. ALICE uses those first, then anything on PATH (ignoring the Java 8 runtime shim Oracle's installer puts on PATH: no `javac`, too old). Without them, `run_code` says how to install them instead of failing obscurely.
 - **Snag:** Python's own HTTP client stalled at 0 bytes for ten minutes on GitHub's release redirect; the script now downloads with curl (`--continue-at`, retries, a minimum-speed check) and resumes partial files.
 - **Why output comes back instead of a separate console window:** ALICE can only check a result she can read. Interactive programs get their input up front (the `stdin` argument, or the input box under a code block in the desktop window).
+- **Installed and checked:** GCC 16.2.0 and OpenJDK 21.0.13, both checksums matched. All 8 runner tests pass with no skips: Python, C, C++ and Java, with input, compile errors, runtime errors and timeouts. Spot checks: a C factorial reading `20` from input printed 2432902008176640000; a C++ type error came back as GCC's message with line and column (plus the unused-variable warning); a Java program read and printed non-ASCII text ("Jörg", "→") correctly.
 
 ---
 
@@ -792,8 +793,26 @@ Goals: old-school ASCII emoticons instead of emoji; a less excited tone, more li
 - **New books** (same verification as before: publisher catalogues or links checked to resolve to a PDF): Interactive Linear Algebra (Georgia Tech), Linear Algebra (UC Davis), *Notes on Diffy Qs* (Lebl) and Contemporary Mathematics (OpenStax; covers the aptitude topics: sets, logic, counting, probability, data); *Think Python 2e* and *Beej's Guide to C*; *Lessons in Electric Circuits* I-IV (DC, AC, semiconductors, digital); *Engineering Statics*; Additive Manufacturing Essentials, Organic Chemistry, Writing Guide with Handbook and Business Ethics (OpenStax). Calculus 1-3, University Physics 1-3, Chemistry 2e, Biology 2e and the Python book already covered most of the rest.
 - **Gaps:** environmental science, technical communication, the Constitution of India, Kannada and engineering graphics have no open PDF a script can fetch (the hosts answer automated requests with 403, or there is no open text). The student's own course material goes in with `alice ingest`.
 - **Wrong section names, found in the desktop window's first screenshot:** a quadratic-formula question cited "Chemistry 2e, p. 1077 (21.6 Biological Effects of Radiation)". The passage was right: it is the book's maths appendix. The *label* was wrong: headings were guessed from numbered lines, so the appendix inherited the last chapter's section, and textbook exercises read as headings (a C arrays/segfault passage was filed under "4 The number of dollars in a bank account"). An 18-question check showed the retrieved passages themselves were relevant.
-- **Fix:** books (120+ pages and 8+ bookmarks) take their sections from the PDF outline. A bookmark's heading line splits its page where it appears; one whose heading can't be found takes the page from the top. Unnumbered bookmarks carry their parent ("Chapter 17 Electrochemistry: Exercises", "Appendix B Essential Mathematics: The Solution of Quadratic Equations"). Papers keep the numbered-line headings the retrieval evals were measured with. All 22 book-length PDFs have usable outlines (46 to 1,004 bookmarks). The section is embedded together with each passage, so the books already in the library are re-ingested (`build_library.py --reingest-books`).
+- **Fix:** books (120+ pages and 8+ bookmarks) take their sections from the PDF outline. A bookmark's heading line splits its page where it appears; one whose heading can't be found takes the page from the top. Unnumbered bookmarks carry their parent ("Chapter 17 Electrochemistry: Exercises", "Appendix B Essential Mathematics: The Solution of Quadratic Equations"). Papers keep the numbered-line headings the retrieval evals were measured with. All 22 book-length PDFs have usable outlines (46 to 1,004 bookmarks). The section is embedded together with each passage, so the books already in the library were re-ingested (`build_library.py --reingest-books`).
+- **Back-of-book indexes dropped:** with correct labels, a new kind of noise showed up. Index pages (term lists with page numbers) contain every keyword and ranked in the top five for matrix rank and BJT questions. Books now skip sections whose bookmark is "Index" (358 of 65,214 passages; existing libraries are cleaned without re-embedding).
+- **Build:** 15 new books plus 13 re-ingested in 138 min on the GPU; the library now has 76 documents and 64,856 passages.
+- **Same 18 study questions, before -> after** (best passage similarity; the automatic-retrieval gate is 0.65):
+
+| question | before | after (top source) |
+|---|---|---|
+| rank of a matrix via row echelon form | 0.53, PCA tutorial (below the gate) | **0.80**, *Notes on Diffy Qs* "Linear algebra: Elimination" + Interactive Linear Algebra "Row Reduction" |
+| Gram-Schmidt | 0.51, Calculus 3 exercises (below) | **0.79**, UC Davis Linear Algebra "Gram-Schmidt & Orthogonal Complements" |
+| variation of parameters | 0.72, Calculus 3 (exercise headings) | **0.74**, *Notes on Diffy Qs* "Higher-order linear ODEs: Nonhomogeneous equations" |
+| pointers and arrays in C | 0.63, "4 The number of dollars in a bank account" (below) | **0.75**, *Beej's Guide to C* "Arrays and Pointers" |
+| Kirchhoff's voltage law | 0.76, Calculus 3 "7.3 Applications" first | **0.79**, *Lessons in Electric Circuits* I "Kirchhoff's Voltage Law" |
+| how a transformer works | 0.65, Physics 2 (just below) | **0.67**, *Lessons in Electric Circuits* II "Transformers" |
+| BJT amplifier | 0.54, Physics 3 "Semiconductor Devices" (below) | **0.66**, *Lessons in Electric Circuits* III "Bipolar Junction Transistors" |
+| moment of inertia of a rectangle | 0.72, Calculus 1-3 centres of mass | **0.81**, *Engineering Statics* "Moments of Inertia of Common Shapes" |
+| quadratic formula | 0.68; the Chemistry 2e maths appendix labelled "21.6 Biological Effects of Radiation" | 0.73, the same passage, now "Appendix B Essential Mathematics: The Solution of Quadratic Equations" |
+
+  Corrosion, photoelectric effect, Green's theorem, binary search, processes vs threads, gradient descent and self-attention were already right and unchanged, apart from cleaner labels. A frustrated "stuck on a segfault for 3 hours" stays below the gate (0.63), which is fine: it needs debugging help, not a textbook page.
 - The desktop window showed every source list twice (before and after the reply); it now shows it once, after.
+- **Observation from the README screenshot:** in one of two takes, the example-usage comments in ALICE's quadratic solver claimed `(1.0, 2.0)` where the code (which used `cmath`) returns `((2+0j), (1+0j))`. That is exactly the kind of slip `run_code` is meant to catch. When she isn't asked to check, she still writes expected output from memory.
 
 ---
 
@@ -807,4 +826,22 @@ The terminal chat box had reached its limits: maths could only be approximated (
 - **Features:** Copy and Run on every code block, with an input box for programs that read input; ALICE's own run requests and `/claude` previews appear as dialogs; drop a PDF, Word or PowerPoint file on the window (saved to `data/uploads/`, then `/read`); a status line with the current phase and timer; Esc stops a reply; Up/Down message history; `/` command hints; Thinking switch and New chat in the header; light and dark themes.
 - **Live check** with the real model, driving the page in headless Edge over the DevTools protocol: "Explain the quadratic formula and give a short Python function ..." gave a typeset formula and discriminant cases (8 KaTeX formulas), two highlighted code blocks with Copy/Run, and a check question about `a = 0`; no page errors; 555 tokens in 23 s.
 - **Snag:** the same check showed an aside literally labelled "Dry aside:", because the turn note's wording was taken as a heading. The note now asks for remarks "woven into the reply ..., never labelled as jokes or asides".
-- Tests: GUI back end over the real WebSocket protocol with a fake session (token and origin checks, a streamed turn, the run-confirmation round trip, commands, an upload followed by `/read`, running a code block with input).
+- Tests: GUI back end over the real WebSocket protocol with a fake session (token and origin checks, a streamed turn, the run-confirmation round trip, commands, an upload followed by `/read`, running a code block with input). In total 187 passing and none skipped, now that the C/C++/Java toolchains are installed.
+
+---
+
+## 2026-11-20 - Watching the program run
+
+When ALICE ran a program, the student saw only a one-line preview of the result (160-240 characters, cut mid-line). The full output went to the model, and the student only saw what she chose to repeat.
+
+- **Live output in every front end.** `run_code` now streams: a `start` event (language, code, input), compiler messages, stdout/stderr as they are printed (batched to ~10 updates a second, the first 100,000 characters shown), and an `end` event with the exit status. A turn sets `coderun.live_output(callback, cancel)` (a context variable, since tools run on the turn's thread), so the tool interface and what the model gets back are unchanged.
+  - **Desktop window:** each program gets a terminal-style panel in the conversation, with errors in red and the exit code in the header; the shortened tool line is gone. Code blocks you run yourself stream into their own panel too, and Run becomes Stop while the program runs.
+  - **Chat box:** a bordered box titled "▶ C program" that fills as the program prints. It keeps the last 200 lines and shows the exit status on its border.
+  - **Line chat:** the output is printed framed (`┌ C program` / `│ ...` / `└ exit code 0 · 0.1 s`).
+- **Live means live:** a program writing to a pipe buffers its output, so nothing would appear until it ended. Python now runs unbuffered (`-u`). C and C++ programs get a small extra file linked in: a constructor calling `setvbuf(stdout, NULL, _IONBF, 0)`. On Windows `_IOLBF` means full buffering, so it has to be unbuffered. Tests check that a line printed before a one-second pause arrives a second before the program ends, in Python and in C.
+- **Stop works on programs:** Esc / Stop kills a running program instead of waiting out the 20 s limit, and the model is told the student stopped it.
+- **Open in terminal:** both panels can run the program in its own console window (Windows), for programs the student wants to type into. A small launcher (`tools/console_runner.py`, standard library only) compiles, runs, prints the exit code and waits for Enter. The window is set to UTF-8 so C programs' accents show. The folders live in `data/runs/` and are deleted after a day. A new window for *every* run was considered and rejected: windows popping up mid-conversation interrupt, and the output would be gone once closed.
+- **Snag:** Windows programs write `\r\n`. The old text-mode pipes hid that, but the new byte-level reader didn't, so it now converts line endings itself, including a `\r` and `\n` that arrive in different chunks.
+- **Live check** with the real model in the window: asked for a C program printing the first 10 Fibonacci numbers and to run it; after the confirmation the panel showed 0 to 34 and "exit code 0", and ALICE's reply then confirmed the output.
+- Tool lines now name the program ("a C program, 14 lines") instead of the line chat's "(c code below)", which was wrong in the window and the chat box.
+- Tests: 196 passing.

@@ -253,6 +253,13 @@ def _norm_heading(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def is_index_section(section: str | None) -> bool:
+    """A book's back-of-book index ("Index", "V Recurrences: Index"): term lists with page numbers that
+    match every keyword and answer nothing. 358 of 65k passages in the starter library, and they reached
+    the top five for "rank of a matrix" and "BJT amplifier"."""
+    return bool(section) and section.rsplit(": ", 1)[-1].strip().lower() == "index"
+
+
 def pdf_outline(reader) -> list[tuple[int, str, str]]:
     """[(0-based page, label, normalised title)] for the PDF's bookmarks in reading order. A bookmark
     without a number of its own is labelled with its parent: "Chapter 17 Electrochemistry: Exercises"."""
@@ -330,6 +337,7 @@ def extract(path: Path) -> tuple[str, list[tuple[int | None, str | None, str]], 
                 first_raw = raw
             if starts:
                 parts, section = split_outline_sections(raw, section, starts.get(i - 1, []))
+                parts = [(s, t) for s, t in parts if not is_index_section(s)]
             else:
                 parts, section = split_sections(raw, section)
             segments += [(i, s, clean_text(t)) for s, t in parts]
@@ -567,6 +575,18 @@ class Library:
         self.db.commit()
         self.index.invalidate()
         return n > 0
+
+    def drop_index_pages(self) -> int:
+        """Delete passages from books' back-of-book indexes (ingested before they were skipped)."""
+        ids = [cid for cid, section in self.db.execute("SELECT id, section FROM chunks WHERE section IS NOT NULL")
+               if is_index_section(section)]
+        if ids:
+            self.db.executemany("DELETE FROM chunks_fts WHERE rowid=?", [(i,) for i in ids])
+            self.db.executemany("DELETE FROM chunks WHERE id=?", [(i,) for i in ids])
+            self._bump_version()
+            self.db.commit()
+            self.index.invalidate()
+        return len(ids)
 
     def set_title(self, doc_id: int, title: str) -> bool:
         n = self.db.execute("UPDATE docs SET title=? WHERE id=?", (title, doc_id)).rowcount

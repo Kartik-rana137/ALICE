@@ -28,6 +28,7 @@ from .. import config
 from ..cli import tool_summary, turn_stats
 from ..llm import LLMError
 from ..session import HELP, StreamFilter
+from ..tools import coderun
 
 STATIC = Path(__file__).parent / "static"
 UPLOADS = config.ROOT / "data" / "uploads"              # gitignored, like the rest of data/
@@ -67,6 +68,7 @@ class Controller:
         self._ids = itertools.count(1)
         self._waits: dict[int, tuple[threading.Event, dict]] = {}
         self._escalations: dict[int, object] = {}
+        self._block_runs: dict[str, threading.Event] = {}      # code blocks running now -> their Stop
         if autostart:
             threading.Thread(target=self._start, name="alice-start", daemon=True).start()
 
@@ -88,7 +90,7 @@ class Controller:
                 "memory": s.memory_size if getattr(s, "memory", None) else None,
                 "claude": bool(getattr(s, "claude", None)),
                 "document": s.document.title if getattr(s, "document", None) is not None else None,
-                "background": getattr(s, "background", None)}
+                "background": getattr(s, "background", None), "console": coderun.console_available()}
 
     # ----- messages from the window
     def handle(self, msg: dict) -> None:
@@ -111,6 +113,12 @@ class Controller:
                 self._info(self.s.command("/reset").message, clear=True)
         elif kind == "run":
             threading.Thread(target=self._run_block, args=(msg,), daemon=True).start()
+        elif kind == "stop_run":
+            stop = self._block_runs.get(str(msg.get("block")))
+            if stop:
+                stop.set()
+        elif kind == "console":
+            threading.Thread(target=self._console, args=(msg,), daemon=True).start()
         self.hub.send(self.status())
 
     def _info(self, text: str, clear: bool = False) -> None:
@@ -178,7 +186,8 @@ class Controller:
             if getattr(self.s, "background", None):
                 self._set_phase(f"finishing {self.s.background}")
             out = self.s.ask(text, on_event=r.event, on_tool_start=r.tool_start, on_tool=r.tool_done,
-                             confirm=self._confirm, on_library=r.library, on_arxiv=r.arxiv, cancel=self.cancel)
+                             confirm=self._confirm, on_library=r.library, on_arxiv=r.arxiv, on_program=r.program,
+                             cancel=self.cancel)
             r.flush()
             self.hub.send({"type": "turn_end", "kept": out.kept, "error": out.error,
                            "notices": [{"kind": n.kind, "text": n.text} for n in out.notices],
@@ -224,11 +233,20 @@ class Controller:
         finally:
             self._end()
 
-    # ----- running a code block the student clicked "Run" on
+    # ----- running a code block the student clicked "Run" on: output streams into the block's panel
     def _run_block(self, msg: dict) -> None:
-        from ..tools.coderun import run_code
-        out = run_code(str(msg.get("language", "python")), str(msg.get("code", "")), stdin=str(msg.get("stdin", "")))
-        self.hub.send({"type": "run_result", "block": msg.get("block"), "output": out})
+        block = str(msg.get("block", ""))
+        stop = self._block_runs[block] = threading.Event()
+        try:
+            coderun.run_code(str(msg.get("language", "python")), str(msg.get("code", "")),
+                             stdin=str(msg.get("stdin", "")), cancel=stop,
+                             emit=lambda e: self.hub.send({"type": "program", "block": block, **e}))
+        finally:
+            self._block_runs.pop(block, None)
+
+    def _console(self, msg: dict) -> None:
+        """Run a program in its own console window, where the student can type into it."""
+        self._info(f"({coderun.open_in_console(str(msg.get('language', 'python')), str(msg.get('code', '')))})")
 
     # ----- files dropped on the window
     def save_upload(self, filename: str, data: bytes) -> Path:
@@ -291,6 +309,15 @@ class _Relay:
         mark = "declined" if tr.declined else ("ok" if tr.ok else "failed")
         self.ctl._set_phase("reading the result")
         self._send({"type": "tool_done", "name": tr.name, "mark": mark, "output": tr.output[:3000]})
+
+    def program(self, e: dict) -> None:
+        """A program ALICE runs: shown live in a console panel in the conversation."""
+        if e["event"] == "start":
+            self.program_title = e["title"]
+            self.ctl._set_phase(f"running the {e['title']} program")
+        elif e["event"] == "phase":
+            self.ctl._set_phase(f"{e['text']} the {getattr(self, 'program_title', '')} program")
+        self._send({"type": "program", **e})
 
     def claude_status(self, what: str) -> None:
         self.ctl._set_phase("Claude is thinking" if what == "thinking" else what)

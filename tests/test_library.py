@@ -172,6 +172,14 @@ def test_book_sections_come_from_the_bookmarks():
     assert parts == [(quad[0], "heading set as an image\nbody")]
 
 
+def test_back_of_book_indexes_are_recognised():
+    from alice.library import is_index_section
+    for index in ["Index", "INDEX", "V Recurrences: Index"]:
+        assert is_index_section(index), index
+    for section in [None, "", "Index notation", "2.3 Indexes and keys", "Arrays: Index arithmetic"]:
+        assert not is_index_section(section), section
+
+
 def test_section_headers_make_heading_words_searchable(tmp_path):
     (tmp_path / "bert.md").write_text("# BERT notes\n\n## Pre-training tasks\n\n"
                                       "Task one is the Masked LM objective. Task two predicts the next sentence.\n\n"

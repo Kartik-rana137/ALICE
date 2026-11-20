@@ -236,7 +236,10 @@ class AliceApp(App):
     def refresh_status(self) -> None:
         s = self.session
         if not self.ready:
-            text = f"loading the model... {time.monotonic() - self.turn_started:.0f} s"
+            waited = time.monotonic() - self.turn_started
+            text = f"loading the model... {waited:.0f} s"
+            if waited > 15:                       # first start after a reboot: the model comes off the disk
+                text += "  (the first start after a reboot reads the whole model from disk; later starts are faster)"
         elif self.busy:
             text = f"{self.phase or 'working'}... {time.monotonic() - self.turn_started:.0f} s  ·  Esc stops"
         else:

@@ -724,3 +724,21 @@ Goal: the closing check question should come with explanations, clarifications a
 - Lesson: wording alone could not make the 9B separate chat from study reliably - softer wording cost half the study check questions, firmer wording let quizzes back into casual replies. A small high-precision classifier (`persona.is_casual`: greetings, thanks, goodbyes, reactions, questions about ALICE, the time or a date, and no study markers like explain/why/prove/code) adds an explicit note only to clearly casual messages; anything unclear keeps the default.
 - Side effect caught by the same eval: told to "reply naturally", casual replies started small-talking about the time from the local-time note ("Friday afternoon greetings..."). The note now says the time is background only; time questions are still answered correctly (the time, 35 days to 25 December).
 - Tests: 157 passing.
+
+---
+
+## 2026-11-20 - Sass spread through the reply; lighter, respectful teasing (persona v3.5)
+
+- Before: every reply opened with a quip (by hand: 14 of 20 replies in the check-question eval, 5 of 8 study answers). Now the system prompt says most replies start with the content and carry 1-3 short dry asides through the reply; the turn note asks for an opening quip on only ~30% of replies (`persona.pick_sass`). Light, affectionate teasing of the student is allowed (print-debugging, deadlines, asking twice), never about their intelligence or ability.
+- Same 20-message eval afterwards: openings with a quip 5/20 (3/8 study); asides spread through the replies; casual replies with a quiz 0/12; study answers with a check question 7/8 (the hash-table answer ended on its code example twice).
+- Snags it surfaced: (a) "What time is it?" got "I don't have access to real-time clock data" - the time note's "background only" wording read as "you don't know it"; now "You know it: use it whenever the student asks about the time or date, but don't bring it up otherwise" (answered correctly again). (b) An opening quip claimed "December 25th is the day after Thanksgiving" - the honesty rules now say a joke must never state something false as a fact (the same failure that got the "fun fact" opener style removed earlier). (c) The eval's detector missed hyphenated "check-your-understanding" and "What's the ...?" questions - fixed, all runs re-scored.
+
+## 2026-11-20 - Faster startup: the processed system prompt is saved and restored
+
+Measured startup (model file already in the OS cache): imports 0.6 s, library 0.1 s, model server 7.7-8.2 s, **system-prompt warm-up 19.1 s** (3,111 tokens at ~163 tok/s), first library search 0.4 s. A cold start after a reboot adds ~50 s: the models live on a laptop hard disk (~110 MB/s for 5.7 GB; the first start of the day measured 60.7 s). They stay on the HDD for now (decision: move to an SSD later, once ALICE is more refined).
+
+- Prompt-processing speed is the GPU's limit, not a setting: llama-bench pp2048 166-168 tok/s for every ubatch (256/512/1024) with or without flash attention.
+- **Fix:** the system prompt's fixed part (tool schemas, persona, tool guidance: 2,895 tokens) is identical in every session; only the date and the memory notes after it change. `llm.prime_prefix` renders the prompt, cuts it at `persona.VARIABLE_PART_MARKER` ("Today's date:"), and either restores that part's processed state from `data/prompt_cache/` (llama-server `--slot-save-path` + `/slots/0?action=restore`) or computes it with `/completion` (`n_predict: 0`) and saves it. The file name is a hash of the model and the exact tokens, so any change to persona, tools, template or model makes a new file; the newest 2 are kept (~240 MB each). Works with the hybrid Qwen3.5 architecture: after a restore the server reused all 2,895 tokens.
+- Result: warm-up **19.1 s -> 2.1 s** (restore 0.25 s + 216 changing tokens), so ALICE answers at full speed ~10 s after starting instead of ~27 s. The first start after a persona/tool change still takes the full time (and saves the file). Snag: Qwen's template refuses to render a prompt with no user message, so the prefix is rendered with a placeholder one (after the marker, so it changes nothing).
+- The chat box now says why the first start after a reboot is slow while the model is read from disk.
+- Tests: 161 passing.

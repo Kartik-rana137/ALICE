@@ -113,5 +113,5 @@ def test_casual_note_rides_with_casual_messages_only(tmp_path, monkeypatch):
 def test_turn_note_carries_the_local_time():
     now = datetime.datetime(2026, 11, 20, 14, 32, tzinfo=datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
     note = persona.turn_note("a pun", now=now)
-    assert "Local time now: Fri 20 Nov 2026, 14:32 (UTC+05:30)" in note
-    assert "Local time" not in persona.turn_note("a pun")                 # evals pass no time: unchanged
+    assert "The current local time is Fri 20 Nov 2026, 14:32 (UTC+05:30)" in note
+    assert "local time" not in persona.turn_note("a pun")                 # evals pass no time: unchanged

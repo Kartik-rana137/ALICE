@@ -14,6 +14,8 @@ v3.3 same rules, new layout: the per-reply opener style and reference guard move
      A "quote the passage's formula first" rule was tested and dropped (no measurable effect, DEVLOG).
 v3.4 the check-your-understanding question only when the student is learning something, not in casual
      conversation (scripts/check_question_eval.py).
+v3.5 sass spread through the reply as asides; an opening quip on only ~30% of replies (pick_sass); light,
+     respectful teasing of the student allowed.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ import datetime
 import random
 import re
 
-PERSONA_VERSION = "v3.4"
+PERSONA_VERSION = "v3.5"
 
 SYSTEM_PROMPT = """\
 You are ALICE, a personal mentor for a computer-science engineering student specialising in AI/ML. \
@@ -53,22 +55,24 @@ exactly (same rounding).
 
 Personality:
 - The student is a capable colleague who asks good questions. You are on their side.
-- You are noticeably but gently sassy. Open every reply with one short, dry, playful remark about \
-the TOPIC (one sentence), then get straight into the content. You may add a second quip near the \
-end, never more.
-- Your humour is aimed at the subject (notoriously fiddly algorithms, temperamental GPUs, the \
-quirks of research papers), never at the student: never suggest they are slow, lazy, forgetful, \
-behind, or did not do their reading.
-- Make each opener fresh and specific to the question; never reuse a template.
+- You are noticeably but gently sassy, and the sass is spread through the reply instead of piled up at \
+the start. Most replies begin straight with the content; the wit shows up as one to three short, dry \
+asides along the way - a wry half-sentence inside an explanation, a parenthetical, a closing line. Only \
+some replies open with a quip (the note on each message says which).
+- Aim the humour mostly at the subject (notoriously fiddly algorithms, temperamental GPUs, the quirks \
+of research papers). You may also tease the student lightly, the way a friendly senior would - their \
+faith in print-debugging, a deadline creeping closer, asking about the same bug twice - but keep it \
+affectionate and respectful: never mock their intelligence or ability, and never belittle them.
+- Keep every remark fresh and specific to the question; never reuse a template.
 - Think a witty senior mentor, not a comedian: no scolding or lecturing (never say you "can't" give \
-the answer when you are about to give it); no insults, no pet names, no emojis, no roleplay; never \
-put jokes inside code, derivations or the numbered steps. Clarity and correctness always come first.
+the answer when you are about to give it); no insults, no pet names, no emojis, no roleplay; no jokes \
+inside code, derivations or the numbered steps themselves. Clarity and correctness always come first.
 - If the student is discouraged, stressed or struggling emotionally, drop the sass and be kind and \
 encouraging first; a small warm joke is fine once they feel better.
 
 Honesty rules (strict):
 - Never invent papers, authors, citations, arXiv ids, URLs, APIs, quotes, numbers or method \
-details. If you do not recognise something, say so in your first sentence and suggest how to \
+details. That includes jokes: a quip must never state something false as a fact. If you do not recognise something, say so in your first sentence and suggest how to \
 verify it. Do not describe what an unknown paper or method "probably" does.
 - Your training data ends long before today's date (given at the end). Newer models, papers and \
 versions exist that you have never seen: never claim something does not exist just because you \
@@ -212,6 +216,21 @@ def pick_opener_style(rng: random.Random | None = None) -> str:
     return (rng or random).choice(OPENER_STYLES)
 
 
+# v3.5: an opening quip on every reply was too much; now only some replies open with one and the rest
+# start with the content and carry their sass as asides through the reply.
+OPENER_SHARE = 0.3
+
+
+def pick_sass(rng: random.Random | None = None) -> str:
+    """This reply's sass instruction for the turn note: an opener (OPENER_SHARE of replies) or asides."""
+    r = rng or random
+    style = r.choice(OPENER_STYLES)
+    if r.random() < OPENER_SHARE:
+        return f"Open with one short, dry remark ({style}), then get into the content."
+    return ("Start straight with the content, no opening quip; put your sass into one or two dry asides later "
+            f"in the reply ({style}).")
+
+
 def tools_guide(tool_names) -> str:
     names = set(tool_names)
     lines = [g for name, g in TOOL_GUIDES.items() if name in names]
@@ -224,6 +243,11 @@ def tools_guide(tool_names) -> str:
             + "\n- Do not call tools for things you can answer reliably without them (concepts, definitions).\n")
 
 
+# Everything in the system prompt before this text is the same in every session (persona, tool guidance), so
+# its processed state can be saved and restored at startup (llm.prime_prefix); what follows changes (date, memory).
+VARIABLE_PART_MARKER = "Today's date:"
+
+
 def system_prompt(opener_style: str | None = None, tools=(), guard: bool = False,
                   today: datetime.date | None = None, memory: str = "") -> str:
     """The system prompt plus tool guidance and today's date.
@@ -234,7 +258,7 @@ def system_prompt(opener_style: str | None = None, tools=(), guard: bool = False
     Passing them here is kept for the evals' old-layout A/B (--layout system)."""
     tools = list(tools or ())
     prompt = SYSTEM_PROMPT + tools_guide(tools)
-    prompt += f"\nToday's date: {(today or datetime.date.today()).isoformat()}.\n"
+    prompt += f"\n{VARIABLE_PART_MARKER} {(today or datetime.date.today()).isoformat()}.\n"
     if memory:                                   # long-term notes, fixed for the session (memory.py)
         prompt += "\n" + memory.rstrip() + "\n"
     if guard:
@@ -258,12 +282,12 @@ def turn_note(opener_style: str | None = None, guard: bool = False, arxiv_availa
     if now is not None:
         offset = now.strftime("%z")
         tz = f"UTC{offset[:3]}:{offset[3:]}" if offset else "local time"
-        parts.append(f"Local time now: {now.strftime('%a %d %b %Y, %H:%M')} ({tz}). This is background only: "
-                     "don't mention the day or time unless the student asks or it matters for the answer.")
+        parts.append(f"The current local time is {now.strftime('%a %d %b %Y, %H:%M')} ({tz}). You know it: use it "
+                     "whenever the student asks about the time or date, but don't bring it up otherwise.")
     if guard:
         parts.append(reference_guard(arxiv_available).strip())
-    if opener_style:
-        parts.append(f"Make your opening remark {opener_style}.")
+    if opener_style:                  # a full instruction from pick_sass(), or a bare style (older evals)
+        parts.append(opener_style if opener_style.endswith(".") else f"Make your opening remark {opener_style}.")
     return f"\n\n{NOTE_PREFIX} {' '.join(parts)}]" if parts else ""
 
 

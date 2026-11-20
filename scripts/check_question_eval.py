@@ -32,9 +32,9 @@ STUDY = [
     "Write a Python function that reverses a linked list.",
     "How does photosynthesis produce oxygen?",
 ]
-_MARKER = re.compile(r"check your understanding|quick check|test (your|yourself)|pop quiz|quiz:|your turn|try this|"
-                     r"exercise|challenge", re.I)
-_TASK_Q = re.compile(r"\b(what (would|will|happens|is the|does)|how (would|many|much|does)|why (would|does|is)|"
+_MARKER = re.compile(r"check[- ]your[- ]understanding|quick check|test (your|yourself)|pop quiz|quiz:|your turn|"
+                     r"try this|exercise|challenge", re.I)
+_TASK_Q = re.compile(r"\b(what (would|will|happens|is the|does)|what'?s the|how (would|many|much|does)|why (would|does|is)|"
                      r"can you|could you|which|if you|predict|calculate|compute|explain)\b[^?]*\?", re.I)
 
 

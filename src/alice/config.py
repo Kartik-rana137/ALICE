@@ -31,6 +31,10 @@ def _get(section: str, key: str, default):
     return _CFG.get(section, {}).get(key, default)
 
 
+def _flag(value) -> bool:
+    return str(value).lower() in ("1", "true", "yes", "on")
+
+
 def resolve(path: str | Path) -> Path:
     p = Path(path)
     return p if p.is_absolute() else ROOT / p
@@ -48,6 +52,10 @@ SERVER_EXE = server_binary(os.environ.get("ALICE_LLAMA_SERVER", _get("server", "
 HOST = _get("server", "host", "127.0.0.1")
 PORT = int(os.environ.get("ALICE_PORT", _get("server", "port", 8088)))
 MODELS_DIR = resolve(_get("paths", "models", "models"))
+# The processed state of the system prompt's fixed part (persona + tool schemas, ~3k tokens = ~19 s on the dev
+# GPU) is saved here and restored on the next start in a fraction of a second (llama-server slot save/restore).
+PROMPT_CACHE = _flag(os.environ.get("ALICE_PROMPT_CACHE", _get("server", "prompt_cache", True)))
+PROMPT_CACHE_DIR = resolve(_get("server", "prompt_cache_dir", "data/prompt_cache"))
 LOG_DIR = resolve(_get("paths", "logs", "logs"))
 TRANSCRIPT_DIR = LOG_DIR / "transcripts"      # gitignored: personal conversations stay local
 
@@ -63,10 +71,6 @@ EMBED_PORT = int(os.environ.get("ALICE_EMBED_PORT", _get("embedding", "port", 80
 EMBED_DEVICE = _get("embedding", "device", "cpu")     # "cpu" keeps embeddings beside the chat model on constrained setups
 RETRIEVE_MIN_SIM = float(os.environ.get("ALICE_RETRIEVE_MIN_SIM", _get("embedding", "retrieve_min_sim", 0.65)))
 RETRIEVE_MIN_SIM_EXPLICIT = float(_get("embedding", "retrieve_min_sim_explicit", 0.50))
-
-
-def _flag(value) -> bool:
-    return str(value).lower() in ("1", "true", "yes", "on")
 
 
 # Automatic arXiv lookup when a question names work that isn't in the library. Off by default: it sends a

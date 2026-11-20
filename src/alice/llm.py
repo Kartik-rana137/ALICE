@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import atexit
+import hashlib
 import json
+import os
 import subprocess
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Iterable, Iterator, Literal
 
 from . import config
@@ -126,6 +128,9 @@ class LlamaServer(ServerProcess):
             cmd += ["--n-cpu-moe", str(p.n_cpu_moe)]
         if p.template_path:
             cmd += ["--chat-template-file", str(p.template_path)]
+        if config.PROMPT_CACHE:
+            config.PROMPT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            cmd += ["--slot-save-path", str(config.PROMPT_CACHE_DIR)]
         cmd += list(p.extra_args)
         return cmd
 
@@ -228,6 +233,50 @@ def complete_json(messages: list[dict], profile: Profile, schema: dict, max_toke
         return json.loads(text)
     except json.JSONDecodeError as e:
         raise LLMError(f"model returned invalid JSON ({e.msg})") from None
+
+
+def _post_json(path: str, payload: dict, timeout: float = 600.0) -> dict:
+    with _post(path, payload, timeout=timeout) as r:
+        return json.load(r)
+
+
+PREFIX_FILES_KEPT = 2          # saved prefix states are ~250 MB each
+
+
+def prime_prefix(messages: list[dict], profile: Profile, tools: list[dict] | None, marker: str,
+                 cache_dir: Path, post=_post_json) -> dict:
+    """Restore the processed state of the prompt's fixed part from disk, or compute and save it.
+
+    The fixed part is everything the chat template renders before `marker` (the first text in the system
+    prompt that can change between sessions, e.g. today's date): tool schemas, persona, tool guidance -
+    ~3k tokens, ~19 s to process on the dev GPU, ~0.3 s to restore (more from a hard disk). The file name is a
+    hash of the model and the exact tokens, so any change to the persona, tools, template or model gets a
+    fresh file. Ends with the server's cache holding exactly those tokens; returns what happened."""
+    if not any(m["role"] == "user" for m in messages):          # Qwen's template refuses a prompt without one;
+        messages = [*messages, {"role": "user", "content": "hi"}]  # it comes after the marker, so no effect
+    rendered = post("/apply-template", {"messages": messages, **({"tools": tools} if tools else {}),
+                                        "chat_template_kwargs": {"enable_thinking": False}})["prompt"]
+    cut = rendered.find(marker)
+    if cut <= 0:
+        return {"status": "no-marker"}
+    tokens = post("/tokenize", {"content": rendered[:cut], "add_special": False})["tokens"]
+    key = hashlib.sha256(json.dumps([profile.gguf, profile.ctx, tokens]).encode()).hexdigest()[:20]
+    name = f"prefix-{key}.bin"
+    path = cache_dir / name
+    t0 = time.monotonic()
+    if path.exists():
+        try:
+            r = post("/slots/0?action=restore", {"filename": name})
+            if r.get("n_restored") == len(tokens):
+                os.utime(path)                               # most recently used: kept by the pruning below
+                return {"status": "restored", "tokens": len(tokens), "seconds": round(time.monotonic() - t0, 2)}
+        except LLMError:
+            pass                                             # unreadable or mismatched file: compute again
+    post("/completion", {"prompt": tokens, "n_predict": 0, "cache_prompt": True, "id_slot": 0})
+    post("/slots/0?action=save", {"filename": name})
+    for old in sorted(cache_dir.glob("prefix-*.bin"), key=lambda f: f.stat().st_mtime, reverse=True)[PREFIX_FILES_KEPT:]:
+        old.unlink(missing_ok=True)
+    return {"status": "saved", "tokens": len(tokens), "seconds": round(time.monotonic() - t0, 2)}
 
 
 def warm_up(messages: list[dict], profile: Profile, tools: list[dict] | None = None) -> dict:

@@ -170,10 +170,11 @@ def main() -> int:
         """(system prompt, opener style, note appended to the question)"""
         if base is not None:
             return base, None, ""
-        style = persona.pick_opener_style()
         names = ["calculate"] if tools else ()
         if a.layout == "system":                    # pre-2026-11-19: per-reply note inside the system prompt
+            style = persona.pick_opener_style()
             return persona.system_prompt(style, tools=names), style, ""
+        style = persona.pick_sass()
         return persona.system_prompt(tools=names), style, persona.turn_note(style)
 
     try:

@@ -21,7 +21,7 @@ from typing import Callable, Literal
 from . import claude, config, memory, persona
 from .agent import STUCK_REPLY, TurnResult, run_turn
 from .conversation import Conversation, turns_text
-from .llm import Event, LLMError, LlamaServer, count_tokens, warm_up
+from .llm import Event, LLMError, LlamaServer, count_tokens, prime_prefix, warm_up
 from .tools import Tool, ToolBox, ToolResult, calc, default_toolbox
 from .transcript import Transcript
 
@@ -166,6 +166,8 @@ class ChatSession:
         self._bg_thread: threading.Thread | None = None
         self._bg_label = ""
         self.warm_timings: dict = {}
+        self.prefix_cache: dict = {}                # what prime_prefix did at startup (restored / saved / ...)
+        self.prefix_primed = False
         self.pending_notices: list[Notice] = []     # from background work; shown with the next answer
         # long-term memory
         self.memory: memory.MemoryStore | None = None
@@ -290,8 +292,15 @@ class ChatSession:
     wait_warm = wait_background                     # older name (scripts/latency_bench.py)
 
     def _warm_up(self) -> None:
+        specs = self.toolbox.specs() if self.toolbox and self.toolbox.tools else None
+        if config.PROMPT_CACHE and self.started_server and not self.prefix_primed:
+            try:                                      # fixed part of the prompt: restore from disk, or compute + save
+                self.prefix_cache = prime_prefix(self.convo.messages(), self.profile, specs,
+                                                 persona.VARIABLE_PART_MARKER, config.PROMPT_CACHE_DIR)
+                self.prefix_primed = True
+            except LLMError as e:
+                self.prefix_cache = {"status": f"unavailable ({e})"}
         try:
-            specs = self.toolbox.specs() if self.toolbox and self.toolbox.tools else None
             self.warm_timings = warm_up(self.convo.messages(), self.profile, tools=specs)
         except LLMError:
             self.warm_timings = {}                    # not fatal: the next question just takes longer
@@ -480,7 +489,7 @@ class ChatSession:
             if on_arxiv and (q := arxiv_lookup_query(text)):
                 on_arxiv(q)                              # show what is sent before sending it
             looked_up, arxiv_query = arxiv_prefetch(text)
-        style = persona.pick_opener_style()
+        style = persona.pick_sass()
         extra, self._pending_extra = self._pending_extra, []
         casual = not prefetched and persona.is_casual(text)
         notes = [*extra, persona.CASUAL_NOTE] if casual else extra       # `extra` is restored if the turn fails

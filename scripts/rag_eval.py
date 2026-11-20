@@ -179,12 +179,13 @@ def answer_eval(library: Library, emb, questions: list, prefetch: bool = True, c
             use_guard = guard and not pre and persona.needs_reference_guard(q)          # same rule as the CLI
             looked_up, arxiv_query = (arxiv_prefetch(q) if (auto_arxiv and with_arxiv and use_guard) else ([], None))
             pre = pre + looked_up
-            style = persona.pick_opener_style()
             if layout == "system":                   # pre-2026-11-19: per-reply note inside the system prompt
+                style = persona.pick_opener_style()
                 system, user = persona.system_prompt(style, tools=list(box.tools), guard=use_guard), q
             else:                                     # as the chat does it now (cache-friendly)
                 system = persona.system_prompt(tools=list(box.tools))
-                user = q + persona.turn_note(style, use_guard, arxiv_available="arxiv_search" in box.tools)
+                user = q + persona.turn_note(persona.pick_sass(), use_guard,
+                                             arxiv_available="arxiv_search" in box.tools)
             res = run_turn([{"role": "system", "content": system}, {"role": "user", "content": user}, *pre],
                            profile, box)
             rep = session.check(res.reply)

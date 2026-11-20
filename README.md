@@ -93,6 +93,30 @@ it poorly).
 - `arxiv_search` / `arxiv_paper`: use the internet
 - `search_library` / `list_library`: available once your library has documents
 
+### Starter library
+
+`scripts/build_library.py` downloads and ingests a starter library:
+
+| Subject | What's in it |
+|---|---|
+| AI and ML papers (44, from arXiv) | Optimisation tutorials, vision, NLP and Transformers, LLMs, generative models, RL, graphs, interpretability, fairness |
+| Maths textbooks | Calculus 1–3 and Introductory Statistics (OpenStax), MIT's *Mathematics for Computer Science* |
+| Physics textbooks | University Physics 1–3 (OpenStax) |
+| Chemistry and biology textbooks | Chemistry 2e and Biology 2e (OpenStax) |
+| CS textbooks | Introduction to Computer Science, Python, Data Science (OpenStax) |
+| Landmark open papers | LIGO, AlphaFold, neural message passing for chemistry, Tao's "What is good mathematics?" |
+
+Every arXiv ID is checked against arXiv before downloading. The PDFs stay in `data/papers/`, which is
+gitignored: the licences (CC BY-NC-SA and similar) allow personal study, not redistribution.
+
+```
+.venv\Scripts\python scripts\build_library.py --dry-run     # check the list, download nothing
+.venv\Scripts\python scripts\build_library.py               # download + ingest (re-runs skip what's there)
+.venv\Scripts\python scripts\build_library.py --no-books    # papers only (the textbooks are 50-220 MB each)
+```
+
+Stop ALICE before running it: embedding uses the GPU. The textbooks take a few minutes each.
+
 ### Memory
 
 ALICE keeps notes in `data/memory/memory.db`, on your computer only. Notes are written in three situations:
